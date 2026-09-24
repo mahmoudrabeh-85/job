@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Job Matcher — Enterprise AI Platform</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ─── Enterprise Sidebar ─────────────────────────────────────────── -->
+    <aside class="app-sidebar" role="navigation" aria-label="التنقل الرئيسي">
+      <div class="sidebar-brand">
+        <div class="brand-icon" aria-hidden="true">⚡</div>
+        <div class="brand-title" id="brandText" style="color:#C6A664;background:none;-webkit-background-clip:unset;-webkit-text-fill-color:#C6A664;">[Your Name] — Senior Procurement</div>
+        <div class="sidebar-glow" aria-hidden="true"></div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')" role="menuitem" aria-current="page">
+          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span class="nav-label" data-i18n="navDashboard">لوحة المراقبة</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+        <a class="nav-item" data-page="jobs" onclick="navigate('jobs')" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">💼</span>
+          <span class="nav-label" data-i18n="navJobs">مستكشف الوظائف</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+        <a class="nav-item" data-page="analytics" onclick="navigate('analytics')" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">📈</span>
+          <span class="nav-label" data-i18n="navAnalytics">تحليلات السوق</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+        <a class="nav-item" data-page="hr" onclick="navigate('hr')" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">📝</span>
+          <span class="nav-label" data-i18n="navHr">أدوات HR والتغطية</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+        <a class="nav-item" data-page="gaps" onclick="navigate('gaps')" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">🎯</span>
+          <span class="nav-label" data-i18n="navGaps">فجوات المهارات</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+        <a class="nav-item" data-page="myapps" onclick="navigate('myapps')" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">📁</span>
+          <span class="nav-label">تقديماتي</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+        <a class="nav-item" data-page="settings" onclick="navigate('settings')" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">⚙️</span>
+          <span class="nav-label" data-i18n="navSettings">الإعدادات</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar">YN</div>
+          <div class="user-meta">
+            <div class="user-name">[Your Name]</div>
+            <div class="user-role">Enterprise Pro Tier</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ─── Mobile Sidebar Overlay ────────────────────────────────────── -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+    <!-- ─── Main Content Canvas ───────────────────────────────────────── -->
+    <main class="app-main" role="main">
+      <!-- Enterprise Top Command Bar -->
+      <header class="command-bar" role="banner">
+        <div class="command-title" id="topbarTitle" style="font-weight:700; font-size:1.1rem;"></div>
+
+        <!-- Mobile Menu Button -->
+        <button class="btn-icon mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()" aria-label="فتح القائمة" style="display:none;">
+          <span>☰</span>
+        </button>
+
+        <!-- Global Search Bar with Shortcut -->
+        <div class="command-search" role="search">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input 
+            type="text" 
+            id="searchBox" 
+            class="command-input" 
+            placeholder="ابحث بالوظيفة، المهارة، الشركة أو الدولة..." 
+            oninput="onSearchInput(this.value)"
+            autocomplete="off"
+            aria-label="بحث شامل"
+          >
+          <button type="button" class="btn-reset search-clear" id="searchClear" onclick="clearSearch()" aria-label="مسح البحث" style="display:none;">✕</button>
+          <span class="kbd-shortcut" aria-hidden="true">⌘K</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="command-actions">
+          <div class="status-pill" id="statusPill" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="liveStatusText">151 وظيفة مفهرسة</span>
+          </div>
+          <button class="btn-icon" id="refreshBtn" onclick="refreshJobs()" title="تحديث" aria-label="تحديث البيانات">⟳</button>
+          <button class="btn-icon" id="themeBtn" onclick="toggleTheme()" title="المظهر" aria-label="تبديل المظهر">🌙</button>
+          <button class="btn-lang" id="langBtn" onclick="toggleLang()" aria-label="تبديل اللغة">EN</button>
+        </div>
+      </header>
+
+      <!-- ─── Page Transition Wrapper ──────────────────────────────────── -->
+      <div class="page-transition-wrapper" id="pageWrapper">
+        <!-- ─── Dashboard & Jobs View ───────────────────────────────────── -->
+        <div id="page-dashboard" class="page-view active" role="region" aria-label="لوحة المراقبة">
+          <!-- KPI Metrics Row -->
+          <div class="kpi-grid" role="list" aria-label="مؤشرات الأداء الرئيسية">
+            <div class="kpi-card" id="statTotal" role="listitem">
+              <div class="kpi-header">
+                <span class="kpi-title" data-stat-label="totalJobs">إجمالي الوظائف</span>
+                <div class="kpi-icon-wrap">🌐</div>
+              </div>
+              <div class="kpi-value" id="countAll">0</div>
+              <div class="kpi-subtext"><span class="trend-badge">↑ 100%</span> تغطية سوقية نشطة</div>
+            </div>
+
+            <div class="kpi-card" id="statHigh" role="listitem">
+              <div class="kpi-header">
+                <span class="kpi-title" data-stat-label="highMatch">تطابق عالي (>50%)</span>
+                <div class="kpi-icon-wrap" style="color:var(--success);">🎯</div>
+              </div>
+              <div class="kpi-value" id="countHigh" style="color:var(--success);">0</div>
+              <div class="kpi-subtext">أفضل توافق مع سيرتك الذاتية</div>
+            </div>
+
+            <div class="kpi-card" id="statAvg" role="listitem">
+              <div class="kpi-header">
+                <span class="kpi-title" data-stat-label="avgScore">متوسط التوافق</span>
+                <div class="kpi-icon-wrap" style="color:var(--brand-primary);">📊</div>
+              </div>
+              <div class="kpi-value" id="statAvgVal">0%</div>
+              <div class="kpi-subtext">معدل التوافق العام للفرص</div>
+            </div>
+
+            <div class="kpi-card" id="statSources" role="listitem">
+              <div class="kpi-header">
+                <span class="kpi-title" data-stat-label="sources">منصات التوظيف</span>
+                <div class="kpi-icon-wrap" style="color:var(--warning);">🔗</div>
+              </div>
+              <div class="kpi-value" id="statSourcesVal">0</div>
+              <div class="kpi-subtext">مصادر متعددة تم تجميعها</div>
+            </div>
+          </div>
+
+          <p style="color:var(--text-muted); font-size:.88rem; margin: -8px 0 10px; line-height:1.6">لوحة تحكم موحدة — 397 وظيفة مفهرسة مع متوسط توافق 87%، فلترة فورية حسب نمط العمل والمصدر والمهارة، واختيار طريقة التقديم (مجاني/لينكدإن/اشتراك). كل بطاقة توضح زرّي التقديم وشارة النوع.</p>
+          <!-- Live Search Results Counter -->
+          <div class="search-results-bar" id="searchResultsBar" style="display:none;" aria-live="polite">
+            <span class="results-count" id="resultsCount">0</span>
+            <span class="results-label" data-i18n="resultsFound">نتائج مطابقة</span>
+            <button class="btn-reset" onclick="clearSearch()" aria-label="مسح البحث">✕ مسح</button>
+          </div>
+
+          <!-- Smart Multi-CV Search Bar -->
+          <div class="smart-search-bar" role="form" aria-label="بحث ذكي متعدد السير الذاتية" style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:var(--surface-2,#151b26); border:1px solid var(--border,#263040); border-radius:14px; padding:12px 16px; margin-bottom:12px;">
+            <span style="font-weight:700; font-size:.9rem; color:var(--brand-primary,#C6A664);">🧠 بحث ذكي بسياق السيرة الذاتية</span>
+            <label for="cvSelect" style="font-size:.82rem; color:var(--text-muted);">قارن بوظائف:</label>
+            <select id="cvSelect" style="flex:1; min-width:200px; background:var(--surface-1,#0d1117); color:var(--text-primary); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 10px; font-size:.85rem;">
+              <option value="default">الـ CV الأساسي (EN/AR)</option>
+            </select>
+            <label for="cvLimit" style="font-size:.82rem; color:var(--text-muted);">أقصى نتائج:</label>
+            <input type="number" id="cvLimit" min="1" max="500" value="50" style="width:90px; background:var(--surface-1,#0d1117); color:var(--text-primary); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 10px; font-size:.85rem;" aria-label="الحد الأقصى لعدد النتائج">
+            <select id="cvWorkType" style="background:var(--surface-1,#0d1117); color:var(--text-primary); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 10px; font-size:.85rem;" aria-label="نمط العمل">
+              <option value="">كل أنماط العمل</option>
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">Onsite</option>
+            </select>
+            <button type="button" onclick="smartSearch()" style="background:var(--brand-primary,#C6A664); color:#0d1117; border:none; border-radius:8px; padding:8px 16px; font-weight:700; cursor:pointer; font-size:.85rem;">🔍 ابحث</button>
+<button type="button" onclick="smartClear()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:.82rem;">✕ إخفاء</button>
+<div id="cvWizard" style="margin:6px 0 10px;border:1px solid #334155;border-radius:10px;padding:12px;background:#0f172a;">
+  <div style="font-weight:600;margin-bottom:8px;color:#38bdf8;">🪄 اصنع سيرتك الذاتية في دقيقتين</div>
+  <div id="wizardQ1" style="display:block;">
+    <div style="margin-bottom:8px;">هل لديك سيرة ذاتية؟</div>
+    <button type="button" class="wz-btn" onclick="wizardHasCv(true)">نعم، لدي سيرة</button>
+    <button type="button" class="wz-btn" onclick="wizardHasCv(false)">لا، أنشئ لي</button>
+  </div>
+  <div id="wizardFlow" style="display:none;"></div>
+</div>
+<style>
+.wz-btn{background:#1e293b;color:#e2e8f0;border:1px solid #475569;border-radius:8px;padding:6px 14px;margin:0 6px 6px 0;cursor:pointer;font-size:13px;}
+.wz-btn:hover{background:#334155;border-color:#38bdf8;}
+.wz-q{margin:10px 0 6px;font-size:13px;color:#cbd5e1;}
+.wz-input{background:#0b1120;color:#e2e8f0;border:1px solid #475569;border-radius:8px;padding:6px 10px;width:100%;box-sizing:border-box;font-size:13px;}
+</style>
+</div>
+
+          <!-- Smart Search Results (independent grid, does not touch app.js state) -->
+          <div id="smartResultsWrap" style="display:none; margin-bottom:14px;">
+            <div class="search-results-bar" style="display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--surface-2,#151b26); border:1px solid var(--border,#263040); border-radius:10px; margin-bottom:10px;">
+              <span style="font-size:.85rem; color:var(--text-muted);">
+                عرض <strong id="smartCount" style="color:var(--brand-primary,#C6A664);">0</strong> وظيفة بسياق
+                <strong id="smartCvName" style="color:var(--text-primary);"></strong>
+                — من <strong id="smartTotal"></strong> مطابقة كاملة
+              </span>
+            </div>
+            <div class="jobs-grid" id="smartGrid" role="list" aria-label="نتائج البحث الذكي"></div>
+          </div>
+
+          <!-- Enterprise Multi-Facet Filter Toolbar -->
+          <div class="facet-toolbar" role="form" aria-label="فلاتر الوظائف">
+            <!-- Clear All Filters Button -->
+            <div class="filter-actions" id="filterActions" style="display:none; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span class="active-filters-count" id="activeFiltersCount">0 فلاتر نشطة</span>
+              <button type="button" class="btn-reset" onclick="resetAll()" aria-label="مسح كل الفلاتر">🔄 مسح الكل</button>
+            </div>
+
+            <!-- Work Type Filter -->
+            <div class="facet-row">
+              <span class="facet-label" data-i18n="filterWorkType">نمط العمل</span>
+              <div class="chip-group" id="workTypeGroup" role="group" aria-label="أنماط العمل">
+                <div class="filter-chip active" data-worktype="all" onclick="setWorkType('all', this)" role="button" tabindex="0" aria-pressed="true">
+                  <span data-i18n="all">الكل</span>
+                  <span class="chip-count" id="countWorkAll">0</span>
+                </div>
+                <div class="filter-chip" data-worktype="remote" onclick="setWorkType('remote', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span data-i18n="remote">عن بُعد (Remote)</span>
+                  <span class="chip-count" id="countWorkRemote">0</span>
+                </div>
+                <div class="filter-chip" data-worktype="hybrid" onclick="setWorkType('hybrid', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span data-i18n="hybrid">هجين (Hybrid)</span>
+                  <span class="chip-count" id="countWorkHybrid">0</span>
+                </div>
+                <div class="filter-chip" data-worktype="onsite" onclick="setWorkType('onsite', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span data-i18n="onsite">مقر العمل (Onsite)</span>
+                  <span class="chip-count" id="countWorkOnsite">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Compatibility Filter -->
+            <div class="facet-row">
+              <span class="facet-label" data-i18n="filterMatch">مستوى التطابق</span>
+              <div class="chip-group" id="matchScoreGroup" role="group" aria-label="مستويات التطابق">
+                <div class="filter-chip active" data-filter="all" onclick="setScoreFilter('all', this)" role="button" tabindex="0" aria-pressed="true">
+                  <span data-i18n="all">كل الدرجات</span>
+                </div>
+                <div class="filter-chip" data-filter="high" onclick="setScoreFilter('high', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span data-i18n="high">تطابق قوي (+50%)</span>
+                  <span class="chip-count" id="countFilterHigh">0</span>
+                </div>
+                <div class="filter-chip" data-filter="mid" onclick="setScoreFilter('mid', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span data-i18n="mid">تطابق متوسط (25-50%)</span>
+                  <span class="chip-count" id="countFilterMid">0</span>
+                </div>
+                <div class="filter-chip" data-filter="low" onclick="setScoreFilter('low', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span data-i18n="low">بحاجة لتطوير مهارات</span>
+                  <span class="chip-count" id="countFilterLow">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Job Sources Filter (multi-select) -->
+            <div class="facet-row">
+              <span class="facet-label">مواقع البحث</span>
+              <div class="chip-group" id="sourceChipsCloud" role="group" aria-label="مصادر الوظائف">
+                <!-- Dynamically populated from loaded jobs -->
+              </div>
+            </div>
+
+            <!-- Category Filter (multi-select: pharma only etc.) -->
+            <div class="facet-row">
+              <span class="facet-label">الفئة</span>
+              <div class="chip-group" id="categoryChipsCloud" role="group" aria-label="فئات الوظائف">
+                <div class="filter-chip" data-cat="pharma" onclick="toggleCategoryChip('pharma', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>💊 فارما وطبي</span>
+                </div>
+                <div class="filter-chip" data-cat="supply" onclick="toggleCategoryChip('supply', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>📦 مشتريات وسلاسل إمداد</span>
+                </div>
+                <div class="filter-chip" data-cat="sales" onclick="toggleCategoryChip('sales', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>💼 مبيعات وتسويق</span>
+                </div>
+                <div class="filter-chip" data-cat="tech" onclick="toggleCategoryChip('tech', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>💻 تقنية وبيانات</span>
+                </div>
+                <div class="filter-chip" data-cat="mgmt" onclick="toggleCategoryChip('mgmt', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>📋 إدارة وعمليات</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Top Skills Quick Filter Cloud -->
+            <div class="facet-row">
+              <span class="facet-label" data-i18n="filterSkills">المهارات</span>
+              <div class="chip-group" id="skillsChipsCloud" role="group" aria-label="المهارات المطلوبة">
+                <!-- Dynamically populated skills -->
+              </div>
+            </div>
+
+            <!-- طريقة التقديم: مجاني vs مدفوع vs لينكدإن -->
+            <div class="facet-row">
+              <span class="facet-label">طريقة التقديم</span>
+              <div class="chip-group" id="applyTypeGroup" role="group" aria-label="طريقة التقديم">
+                <div class="filter-chip active" data-apply="all" onclick="setApplyType('all', this)" role="button" tabindex="0" aria-pressed="true">
+                  <span>الكل</span>
+                  <span class="chip-count" id="countApplyAll">0</span>
+                </div>
+                <div class="filter-chip" data-apply="free" onclick="setApplyType('free', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>🆓 مجاني مباشر</span>
+                  <span class="chip-count" id="countApplyFree">0</span>
+                </div>
+                <div class="filter-chip" data-apply="linkedin" onclick="setApplyType('linkedin', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>💼 عبر لينكدإن</span>
+                  <span class="chip-count" id="countApplyLinkedin">0</span>
+                </div>
+                <div class="filter-chip" data-apply="paid" onclick="setApplyType('paid', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>🔒 يتطلب اشتراك</span>
+                  <span class="chip-count" id="countApplyPaid">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- LinkedIn Quick Search (always ready, no login needed) -->
+            <div class="facet-row">
+              <span class="facet-label">لينكدإن</span>
+              <div class="chip-group">
+                <button type="button" class="filter-chip linkedin-chip" onclick="searchLinkedIn()" title="ابحث في لينكدإن بنفس كلمات البحث الحالية — التقديم بحسابك الحالي بلا دفع" role="button">
+                  <span>💼 بحث لينكدإن بنفس الكلمات — مجاني بحسابك</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Gulf & Egypt Boards (quick search, no key — auto-scrape blocked by design) -->
+            <div class="facet-row">
+              <span class="facet-label">الخليج ومصر</span>
+              <div class="chip-group" role="group" aria-label="مواقع التوظيف الإقليمية">
+                <button type="button" class="filter-chip" onclick="searchGulf('bayt')" title="ابحث في بيت.كوم بنفس الكلمات" role="button">
+                  <span>🇦🇪 بيت.كوم</span>
+                </button>
+                <button type="button" class="filter-chip" onclick="searchGulf('wuzzuf')" title="ابحث في وظف بنفس الكلمات" role="button">
+                  <span>🇪🇬 وظف</span>
+                </button>
+                <button type="button" class="filter-chip" onclick="searchGulf('gulftalent')" title="ابحث في GulfTalent بنفس الكلمات" role="button">
+                  <span>🇸🇦 GulfTalent</span>
+                </button>
+                <button type="button" class="filter-chip" onclick="searchGulf('naukri')" title="ابحث في Naukrigulf بنفس الكلمات" role="button">
+                  <span>🇶🇦 Naukrigulf</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Toolbar Secondary Controls (Sort & Reset) -->
+            <div class="toolbar-controls">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:0.82rem; color:var(--text-muted); font-weight:600;" data-i18n="sortBy">ترتيب حسب:</span>
+                <select id="sortSelect" class="sort-select" onchange="sortJobs()" aria-label="ترتيب النتائج">
+                  <option value="score_desc">الأعلى توافقاً مع السيرة الذاتية</option>
+                  <option value="score_asc">الأدنى توافقاً</option>
+                  <option value="title_asc">اسم الوظيفة (أ-ي)</option>
+                  <option value="date_desc">الأحدث إضافة</option>
+                </select>
+              </div>
+
+              <button type="button" class="btn-reset" onclick="resetAll()" aria-label="إعادة تعيين كل الفلاتر">
+                <span>🔄</span> <span data-i18n="resetFilters">إعادة تعيين الفلاتر</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Job Cards Grid -->
+          <div class="jobs-grid" id="jobsGrid" role="list" aria-label="قائمة الوظائف"></div>
+
+          <!-- Empty State -->
+          <div id="emptyState" class="empty-state" style="display:none;" role="status" aria-live="polite">
+            <div class="empty-illustration" aria-hidden="true">
+              <div class="illustration-search"></div>
+            </div>
+            <h2 id="emptyTitle" style="font-size:1.2rem; margin-bottom:8px;">لا توجد وظائف مطابقة</h2>
+            <p id="emptyDesc" style="color:var(--text-muted); font-size:0.9rem; margin-bottom:16px;">جرّب تعديل الفلاتر أو كلمات البحث للعثور على فرص أخرى</p>
+            <button class="btn-primary" onclick="resetAll()">عرض كل الوظائف</button>
+          </div>
+        </div>
+
+        <!-- ─── Additional Pages ────────────────────────────────────────── -->
+        <div id="page-jobs" class="page-view" role="region" aria-label="مستكشف الوظائف">
+          <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;" data-i18n="navJobs">مستكشف الوظائف</h2>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">تصفح كل الوظائف المجمعة مع فلترة فورية حسب المهارة والموقع ونوع التقديم — كل بطاقة تعرض نسبة التوافق، زر <b>🆓 مجاني</b> للتقديم المباشر و <b>💼 لينكدإن</b> للتقديم بحسابك (Easy Apply مجاني)، وشارة توضح هل التقديم مجاني أم يتطلب اشتراك.</p>
+          <div id="jobsExplorerGrid" class="jobs-grid" role="list" aria-label="قائمة الوظائف"></div>
+        </div>
+
+        <div id="page-analytics" class="page-view" role="region" aria-label="تحليلات السوق">
+          <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;" data-i18n="analyticsTitle">تحليلات سوق التوظيف والفجوات المهارية</h2>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">رسوم بيانية حية من قاعدة البيانات: توزيع التقييمات، الوظائف حسب المصدر، وأكثر المهارات طلباً — تساعدك على معرفة أين تركز تطويرك، مع قسم SWOT يربط نقاط قوتك بالفرص المتاحة.</p>
+          <div id="analyticsContent"></div>
+        </div>
+
+        <div id="page-hr" class="page-view" role="region" aria-label="أدوات HR">
+          <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;" data-i18n="hrTitle">أدوات HR ومولد خطابات التغطية الذكي</h2>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">اكتب عنوان الوظيفة واسم الشركة ثم اختر اللغة — نولّد لك رسالة تغطية احترافية (عربي/إنجليزي)، مع قوالب جاهزة للمتابعة بعد التقديم، الشكر بعد المقابلة، والتفاوض على الراتب. كل رسالة قابلة للنسخ بضغطة واحدة.</p>
+          <div id="hrContent2"></div>
+        </div>
+
+        <div id="page-settings" class="page-view" role="region" aria-label="الإعدادات">
+          <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;" data-i18n="settingsTitle">إعدادات المنصة ومصادر البيانات</h2>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">تحكم في المظهر (فاتح/داكن بني)، اللغة، وتصدير بياناتك (CSV/JSON). بالأسفل تجد بيانات التواصل الرسمية — كل التقديم يتم مجاناً عبر أزرار البطاقات أو عبر حساب LinkedIn الحالي.</p>
+          <div id="settingsContent"></div>
+          <div class="card" style="margin-top:16px; border-color:var(--brand-primary)">
+            <div class="card-title">📞 التواصل الرسمي — [Your Name]</div>
+            <p style="color:var(--text-muted); font-size:.85rem; margin-bottom:10px">رقم الهاتف الموحد — جميع القنوات على نفس الرقم:</p>
+            <div style="display:grid; gap:8px">
+              <a href="tel:[Phone]" style="display:flex; align-items:center; gap:8px; font-weight:700; color:var(--text-primary)">📱 ‎+[Phone] — اتصال مباشر</a>
+              <a href="https://wa.me/[Phone]" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; color:#25D366; font-weight:700">💬 واتساب مباشر — wa.me/[Phone]</a>
+              <a href="https://t.me/[Phone]" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; color:#26A5E4; font-weight:700">✈️ تليجرام — t.me/[Phone]</a>
+              <a href="https://www.linkedin.com/in/[Your-LinkedIn]" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; color:#0A66C2; font-weight:700">💼 لينكدإن — linkedin.com/in/[Your-LinkedIn]</a>
+            </div>
+            <p style="color:var(--text-muted); font-size:.78rem; margin-top:8px">ملاحظة: الرقم المعتمد الوحيد هو الموضح أعلاه.</p>
+          </div>
+        </div>
+
+        <div id="page-gaps" class="page-view" role="region" aria-label="فجوات المهارات">
+          <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;">🎯 تحليل فجوات المهارات وموارد التعلم</h2>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">نقارن سيرتك مع 397 وظيفة حية: نعرض مهاراتك المطابقة، والفجوات المطلوبة — ومنها <b>ERP (Oracle/SAP/Odoo)</b> أصبحت الآن في قائمة التعلم مع دورة مقترحة (Oracle University / SAP Learning / Udemy — 2-3 أشهر)، مع روابط وظائف لكل فجوة.</p>
+          <div id="gapsContent"></div>
+        </div>
+
+        <div id="page-myapps" class="page-view" role="region" aria-label="تقديماتي">
+          <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;">📁 تقديماتي ومتابعتها</h2>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">سجل كل وظيفة تقدمت لها بضغطة “سجل أنك قدمت” من نافذة التفاصيل — نحفظها محلياً مع تاريخ التقديم وحالة المتابعة، لتعود لها لاحقاً وتتابع الردود.</p>
+          <div id="myappsContent"></div>
+        </div>
+      </div>
+
+      <!-- Back to Top Button -->
+      <button class="back-to-top" id="backToTop" onclick="scrollToTop()" aria-label="العودة للأعلى" style="display:none;" hidden>
+        <span aria-hidden="true">↑</span>
+      </button>
+    </main>
+  </div>
+
+  <!-- ─── Master-Detail Slide-Over Drawer ─────────────────────────────── -->
+  <div id="modalOverlay" class="modal-overlay" onclick="handleOverlayClick(event)" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="drawer-panel" id="modalContent" role="document">
+      <!-- Dynamically filled with deep dive details -->
+    </div>
+    <button class="drawer-close" onclick="closeModal()" aria-label="إغلاق التفاصيل">✕</button>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Keyboard Navigation Hint (shown once) -->
+  <div class="keyboard-hint" id="keyboardHint" role="status" aria-live="polite" style="display:none;">
+    <kbd>↑</kbd><kbd>↓</kbd> للتنقل بين البطاقات · <kbd>Enter</kbd> للتفاصيل · <kbd>Esc</kbd> للإغلاق
+  </div>
+
+  <script src="app.js"></script>
+  <!-- Smart Multi-CV Search (independent of app.js) -->
+  <script>
+  (function () {
+    const cvSelect = document.getElementById('cvSelect');
+    const cvLimit = document.getElementById('cvLimit');
+    const cvWorkType = document.getElementById('cvWorkType');
+    const wrap = document.getElementById('smartResultsWrap');
+    const grid = document.getElementById('smartGrid');
+    const smartCount = document.getElementById('smartCount');
+    const smartTotal = document.getElementById('smartTotal');
+    const smartCvName = document.getElementById('smartCvName');
+    const searchBox = document.getElementById('searchBox');
+
+    // Score badge color helper (same palette as main UI)
+    function scoreBadge(score) {
+      if (score >= 80) return { bg: 'rgba(34,197,94,.15)', color: '#22c55e', label: score + '%' };
+      if (score >= 50) return { bg: 'rgba(245,158,11,.15)', color: '#f59e0b', label: score + '%' };
+      return { bg: 'rgba(100,116,139,.18)', color: '#94a3b8', label: score + '%' };
+    }
+
+    function renderJobs(jobs, cvName, total) {
+      smartCount.textContent = jobs.length;
+      smartCvName.textContent = cvName || '';
+      smartTotal.textContent = total;
+      grid.innerHTML = '';
+      if (!jobs || jobs.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="display:block; padding:24px; text-align:center; color:var(--text-muted);">لا توجد وظائف مطابقة بهذا الـ CV — جرّب رفع الحد الأقصى أو تغيير الـ CV.</div>';
+        return;
+      }
+      jobs.forEach((j) => {
+        const a = j.analysis || {};
+        const score = a.score != null ? a.score : 0;
+        const b = scoreBadge(score);
+        const cat = (j.category || '').replace(/[\[\]"']/g, '');
+        const card = document.createElement('div');
+        card.className = 'job-card';
+        card.setAttribute('role', 'listitem');
+        card.style.cssText = 'background:var(--surface-1,#0d1117); border:1px solid var(--border,#263040); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;';
+        card.innerHTML =
+          '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">' +
+          '  <div style="min-width:0;">' +
+          '    <div style="font-weight:700; font-size:.95rem; color:var(--text-primary); line-height:1.4;">' + escapeHtml(j.title || '') + '</div>' +
+          '    <div style="font-size:.82rem; color:var(--text-muted); margin-top:3px;">' + escapeHtml(j.company || '') + (j.location ? ' · ' + escapeHtml(j.location) : '') + '</div>' +
+          '  </div>' +
+          '  <div style="flex-shrink:0; background:' + b.bg + '; color:' + b.color + '; border-radius:8px; padding:4px 10px; font-weight:800; font-size:.82rem;">' + b.label + '</div>' +
+          '</div>' +
+          (j.salary_raw ? '<div style="font-size:.8rem; color:var(--warning,#f59e0b);">💰 ' + escapeHtml(j.salary_raw) + '</div>' : '') +
+          (cat ? '<div style="font-size:.75rem; color:var(--text-muted);">🏷️ ' + escapeHtml(cat) + '</div>' : '') +
+          (j.url ? '<a href="' + escapeAttr(j.url) + '" target="_blank" rel="noopener" style="margin-top:auto; text-align:center; background:var(--brand-primary,#C6A664); color:#0d1117; text-decoration:none; border-radius:8px; padding:7px 10px; font-weight:700; font-size:.82rem;">التقديم على الوظيفة ↗</a>' : '');
+        grid.appendChild(card);
+      });
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+
+    // Load CV options once from server
+    async function loadCvOptions() {
+      try {
+        const d = await fetch('/api/cv_list');
+        const data = await d.json();
+        if (!data || !data.cvs) return;
+        cvSelect.innerHTML = '';
+        data.cvs.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          cvSelect.appendChild(opt);
+        });
+      } catch (e) {
+        // silent — keep default option
+      }
+    }
+
+    window.smartSearch = async function () {
+      const cv = cvSelect.value || 'default';
+      const limit = parseInt(cvLimit.value, 10) || 50;
+      const wt = cvWorkType.value || '';
+      // Reuse the global search box text if present
+      let q = '';
+      if (searchBox && searchBox.value) q = searchBox.value.trim();
+      const params = new URLSearchParams({ cv: cv, limit: limit, min_score: '0' });
+      if (wt) params.set('work_type', wt);
+      if (q) params.set('q', q);
+      try {
+        const d = await fetch('/api/search?' + params.toString());
+        const data = await d.json();
+        const list = data.jobs || [];
+        const cvName = (cvSelect.selectedOptions[0] || {}).textContent || cv;
+        renderJobs(list, cvName, data.total || list.length);
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) {
+        grid.innerHTML = '<div class="empty-state" style="display:block; padding:24px; text-align:center; color:#ef4444;">فشل البحث الذكي: ' + escapeHtml(String(e && e.message || e)) + '</div>';
+        wrap.style.display = 'block';
+      }
+    };
+
+    window.smartClear = function () {
+      wrap.style.display = 'none';
+      grid.innerHTML = '';
+    };
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadCvOptions);
+    else loadCvOptions();
+
+    // ── CV Wizard (one question at a time) ──
+    let wizField = '';
+    let wizTitle = '';
+
+    window.wizardHasCv = function (hasCv) {
+      const q1 = document.getElementById('wizardQ1');
+      const flow = document.getElementById('wizardFlow');
+      if (hasCv) {
+        q1.style.display = 'none';
+        flow.style.display = 'block';
+        flow.innerHTML = '<div class="wz-q">رائع! اختر سيرتك من القائمة أعلاه أو جرّب شخصية جاهزة👇</div>';
+      } else {
+        q1.style.display = 'none';
+        flow.style.display = 'block';
+        wizStep(1);
+      }
+    };
+
+    window.wizStep = function (step) {
+      const flow = document.getElementById('wizardFlow');
+      const args = Array.prototype.slice.call(arguments, 1);
+      const field = args[0] || wizField;
+      const years = args[1] || '';
+
+      if (step === 1) {
+        flow.innerHTML =
+          '<div class="wz-q">ما أقرب مجال لخبرتك؟</div>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(2,\'procurement\')">المشتريات</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(2,\'sales\')">المبيعات</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(2,\'supply_chain\')">سلسلة التوريد واللوجستيات</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(2,\'pharma\')">الصيدلة والقطاع الطبي</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(2,\'general\')">إدارة وأعمال عامة</button>';
+      } else if (step === 2) {
+        wizField = field;
+        flow.innerHTML =
+          '<div class="wz-q">ما مسماك الوظيفي الحالي أو الأخير؟</div>' +
+          '<input type="text" id="wizTitle" class="wz-input" placeholder="مثال: Senior Procurement Manager">' +
+          '<br><button type="button" class="wz-btn" onclick="wizStep(3,\'\')">التالي →</button>';
+      } else if (step === 3) {
+        const titleEl = document.getElementById('wizTitle');
+        if (titleEl) wizTitle = titleEl.value.trim();
+        wizField = field;
+        flow.innerHTML =
+          '<div class="wz-q">كم سنة خبرة؟</div>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'0-2\')">أقل من سنتين (0-2)</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'3-5\')">3-5 سنوات</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'6-10\')">6-10 سنوات</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'10+\')">أكثر من 10</button>';
+      } else if (step === 4) {
+        wizField = field;
+        flow.innerHTML =
+          '<div class="wz-q">ما نمط العمل المفضل؟</div>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'remote\')">🌐 Remote (عن بُعد)</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'hybrid\')">Hybrid (هجين)</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'onsite\')">🏢 Onsite (مقر العمل)</button>' +
+          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'all\')">كل الأنماط</button>';
+      } else if (step === 5) {
+        const workType = args[2] || 'all';
+        wizCreate(wizField, years, workType);
+      }
+    }
+
+    window.wizCreate = async function (field, years, workType) {
+      const title = wizTitle || '';
+      if (!title) {
+        const flow = document.getElementById('wizardFlow');
+        flow.innerHTML += '<div style="color:#ef4444;margin-top:8px;font-size:13px;">اكتب اسم المسمى الوظيفي أولاً</div>';
+        return;
+      }
+
+      const skillsMap = {
+        procurement: ['procurement','negotiation','vendor management','supply chain'],
+        sales: ['sales','business development','client management'],
+        supply_chain: ['logistics','inventory management','distribution'],
+        pharma: ['pharmaceutical','healthcare','compliance'],
+        general: ['management','operations','reporting']
+      };
+      const skills = skillsMap[field] || skillsMap['general'];
+
+      const flow = document.getElementById('wizardFlow');
+      flow.innerHTML = '<div class="wz-q">⏳ جاري إنشاء سيرتك وتحميل النتائج...</div>';
+
+      try {
+        const res = await fetch('/api/cv_generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, years, field, skills, work_type: workType })
+        });
+        const data = await res.json();
+        if (data.success) {
+          await loadCvOptions();
+          const newCv = cvSelect.querySelector('option[value="' + data.cv_id + '"]');
+          if (newCv) cvSelect.value = data.cv_id;
+          smartSearch();
+          flow.innerHTML = '<div class="wz-q" style="color:#22c55e;">✅ تم إنشاء سيرتك (الاسم: ' + data.cv_id + ') — النتائج بالأعلى. يمكنك إعادة الاختيار من القائمة أو إنشاء غيرها.</div>';
+        } else {
+          flow.innerHTML = '<div class="wz-q" style="color:#ef4444;">فشل الإنشاء: ' + (data.message || 'unknown') + '</div>';
+        }
+      } catch (e) {
+        flow.innerHTML = '<div class="wz-q" style="color:#ef4444;">خطأ في الإنشاء: ' + escapeHtml(String(e.message || e)) + '</div>';
+      }
+    };
+
+  })();
+  </script>
+</body>
+</html>

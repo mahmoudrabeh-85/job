@@ -1,0 +1,21 @@
+# ── Personal / private data — NEVER tracked ──
+cv/
+data/
+inbox/
+versions/
+*.env
+.env*
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

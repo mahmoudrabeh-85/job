@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Job Matcher — منصة مطابقة الوظائف الذكية</title>
+  <meta name="description" content="منصة ذكية لتحليل وتصفية مطابقة الوظائف باستخدام الذكاء الاصطناعي">
+  <meta name="keywords" content="job matching, AI, CV analysis, recruitment">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="topbar" dir="ltr">
+    <div class="logo" id="logoText"></div>
+    <a href="#features" class="nav-link" data-page="features"></a>
+    <a href="#how-it-works" class="nav-link" data-page="how-it-works"></a>
+    <a href="#pricing" class="nav-link" data-page="pricing"></a>
+    <a href="#" onclick="toggleLang()" class="lang-switch" id="langSwitch"></a>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1 id="heroTitle"></h1>
+      <p id="heroSubtitle"></p>
+      <div class="hero-buttons">
+        <button id="btnStartNow" class="btn btn-primary btn-lg"></button>
+        <button id="btnBrowseJobs" class="btn btn-secondary btn-lg"></button>
+      </div>
+    </div>
+    <div class="hero-image">
+      <svg width="400" height="300" viewBox="0 0 400 300" fill="none"></svg>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="section" dir="rtl">
+    <div class="section-header">
+      <h2 id="featuresTitle"></h2>
+      <p id="featuresSubtitle"></p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="card-icon">🎯</div>
+        <h3 id="feature1Title"></h3>
+        <p id="feature1Desc"></p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">📊</div>
+        <h3 id="feature2Title"></h3>
+        <p id="feature2Desc"></p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">🛠️</div>
+        <h3 id="feature3Title"></h3>
+        <p id="feature3Desc"></p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">📝</div>
+        <h3 id="feature4Title"></h3>
+        <p id="feature4Desc"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how-it-works" class="section" dir="rtl">
+    <div class="section-header">
+      <h2 id="howWorksTitle"></h2>
+      <p id="howWorksSubtitle"></p>
+    </div>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3 id="step1Title"></h3>
+        <p id="step1Desc"></p>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3 id="step2Title"></h3>
+        <p id="step2Desc"></p>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3 id="step3Title"></h3>
+        <p id="step3Desc"></p>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3 id="step4Title"></h3>
+        <p id="step4Desc"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2 id="ctaTitle"></h2>
+      <p id="ctaSubtitle"></p>
+      <div class="cta-buttons">
+        <button id="btnGetStarted" class="btn btn-primary btn-lg"></button>
+        <button id="btnWatchDemo" class="btn btn-secondary btn-lg"></button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer" dir="ltr">
+    <div class="footer-text" id="footerText"></div>
+    <div class="footer-links">
+      <a href="#" id="privacyLink"></a>
+      <a href="#" id="termsLink"></a>
+      <a href="#" id="supportLink"></a>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
