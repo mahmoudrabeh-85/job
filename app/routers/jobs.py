@@ -8,7 +8,7 @@ GET /api/v1/stats         → dashboard statistics
 from fastapi import APIRouter, Query
 from typing import Optional
 from pydantic import BaseModel
-from app.database import paginate, fetch_all, fetch_one, db_exists, get_connection
+from app.database_factory import paginate, fetch_all, fetch_one, db_exists, get_connection, execute
 from app.routers.analysis import analyze_job, load_cv_text
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
@@ -17,14 +17,35 @@ APP_STATUSES = ("applied", "interview", "offer", "rejected", "withdrawn")
 
 
 def _ensure_apps_table():
-    with get_connection() as conn:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS applications ("
-            "job_id TEXT PRIMARY KEY, title TEXT, company TEXT, url TEXT, "
-            "status TEXT DEFAULT 'applied', notes TEXT DEFAULT '', "
-            "applied_at TEXT DEFAULT (datetime('now','localtime')))"
-        )
-        conn.commit()
+    """Create applications table if not exists (works with both SQLite and PostgreSQL)."""
+    import os
+    db_url = os.getenv("DATABASE_URL", "")
+    if db_url and db_url.startswith("postgresql"):
+        # PostgreSQL syntax
+        execute("""
+            CREATE TABLE IF NOT EXISTS applications (
+                job_id TEXT PRIMARY KEY,
+                title TEXT,
+                company TEXT,
+                url TEXT,
+                status TEXT DEFAULT 'applied',
+                notes TEXT DEFAULT '',
+                applied_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+    else:
+        # SQLite syntax
+        execute("""
+            CREATE TABLE IF NOT EXISTS applications (
+                job_id TEXT PRIMARY KEY,
+                title TEXT,
+                company TEXT,
+                url TEXT,
+                status TEXT DEFAULT 'applied',
+                notes TEXT DEFAULT '',
+                applied_at TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
 
 
 class ApplyRequest(BaseModel):
@@ -221,14 +242,36 @@ def search_jobs(
     }
 
 
+def _placeholder() -> str:
+    """Return the correct placeholder for the current database backend."""
+    import os
+    return "%s" if os.getenv("DATABASE_URL", "").startswith("postgresql") else "?"
+
+
+def _now_sql() -> str:
+    """Return the correct NOW function for the current database backend."""
+    import os
+    return "NOW()" if os.getenv("DATABASE_URL", "").startswith("postgresql") else "datetime('now','localtime')"
+
+
+def _upsert_sql() -> str:
+    """Return the correct UPSERT syntax for the current database backend."""
+    import os
+    if os.getenv("DATABASE_URL", "").startswith("postgresql"):
+        return "ON CONFLICT(job_id) DO UPDATE SET status='applied', applied_at=NOW()"
+    else:
+        return "ON CONFLICT(job_id) DO UPDATE SET status='applied', applied_at=datetime('now','localtime')"
+
+
 @router.post("/applications")
 def mark_applied(req: ApplyRequest):
     """Record that the user applied to a job (tracker)."""
     _ensure_apps_table()
+    ph = _placeholder()
     with get_connection() as conn:
         conn.execute(
-            "INSERT INTO applications (job_id, title, company, url, status) VALUES (?,?,?,?, 'applied') "
-            "ON CONFLICT(job_id) DO UPDATE SET status='applied', applied_at=datetime('now','localtime')",
+            f"INSERT INTO applications (job_id, title, company, url, status) VALUES ({ph},{ph},{ph},{ph}, 'applied') "
+            f"{_upsert_sql()}",
             [req.job_id, req.title, req.company, req.url],
         )
         conn.commit()
@@ -239,7 +282,10 @@ def mark_applied(req: ApplyRequest):
 def list_applications():
     """List all tracked applications, newest first."""
     _ensure_apps_table()
-    return {"items": fetch_all("SELECT * FROM applications ORDER BY applied_at DESC")}
+    # Use the correct timestamp column name for ordering
+    import os
+    order_col = "applied_at"  # Same column name in both
+    return {"items": fetch_all(f"SELECT * FROM applications ORDER BY {order_col} DESC")}
 
 
 @router.patch("/applications/{job_id}")
@@ -248,9 +294,10 @@ def update_application(job_id: str, req: ApplyStatusRequest):
     _ensure_apps_table()
     if req.status not in APP_STATUSES:
         return {"ok": False, "error": f"status must be one of {APP_STATUSES}"}
+    ph = _placeholder()
     with get_connection() as conn:
         cur = conn.execute(
-            "UPDATE applications SET status=?, notes=? WHERE job_id=?",
+            f"UPDATE applications SET status={ph}, notes={ph} WHERE job_id={ph}",
             [req.status, req.notes, job_id],
         )
         conn.commit()

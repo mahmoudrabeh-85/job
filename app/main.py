@@ -3,6 +3,7 @@ main.py — FastAPI application entry point
 Run with: uvicorn app.main:app --port 8767 --reload
 """
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,24 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.routers import jobs, analysis, vet
+from app.database_factory import init_db, close_pools, _BACKEND
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler - startup and shutdown."""
+    # Startup
+    print(f"🔧 Starting Smart Job Matcher (DB backend: {_BACKEND})")
+    if settings.use_postgresql:
+        print("🐘 Using PostgreSQL (Supabase)")
+        init_db()
+    else:
+        print("💾 Using SQLite (local)")
+    yield
+    # Shutdown
+    print("🛑 Shutting down...")
+    close_pools()
+
 
 # ─── App Creation ────────────────────────────────────────────────────────
 app = FastAPI(
@@ -19,6 +38,7 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # ─── CORS ────────────────────────────────────────────────────────────────
@@ -39,10 +59,11 @@ app.include_router(vet.router)
 # ─── Health Check ────────────────────────────────────────────────────────
 @app.get("/api/v1/health")
 def health_check():
-    from app.database import db_exists
+    from app.database_factory import db_exists, _BACKEND
     return {
         "status": "ok",
         "db_exists": db_exists(),
+        "db_backend": _BACKEND,
         "version": "2.0.0",
     }
 

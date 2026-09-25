@@ -13,19 +13,22 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ─── Server ────────────────────────────────────
+    # ─── Database ────────────────────────────────────────
+    DATABASE_URL: str = ""
+
+    # ─── Server ──────────────────────────────────────────
     PORT: int = 8767
     HOST: str = "127.0.0.1"
 
-    # ─── Paths (relative to project root) ──────────
+    # ─── Paths (relative to project root) ────────────────
     BASE_DIR: Path = Path(__file__).resolve().parent.parent
     DB_PATH: str = "data/jobs.db"
     CV_DIR: str = "cv"
 
-    # ─── CORS ──────────────────────────────────────
+    # ─── CORS ────────────────────────────────────────────
     CORS_ORIGINS: str = "http://localhost:8767,http://127.0.0.1:8767"
 
-    # ─── Optional API Keys ─────────────────────────
+    # ─── Optional API Keys ───────────────────────────────
     ADZUNA_APP_ID: str = ""
     ADZUNA_APP_KEY: str = ""
 
@@ -44,6 +47,11 @@ class Settings(BaseSettings):
     @property
     def frontend_dir(self) -> Path:
         return self.BASE_DIR / "frontend"
+
+    @property
+    def use_postgresql(self) -> bool:
+        """Return True if PostgreSQL (Supabase) should be used."""
+        return bool(self.DATABASE_URL and self.DATABASE_URL.startswith("postgresql"))
 
 
 settings = Settings()
