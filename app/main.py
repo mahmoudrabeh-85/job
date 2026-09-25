@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings
 from app.routers import jobs, analysis, vet
@@ -108,6 +108,45 @@ def legacy_jobs(page: int = 1, page_size: int = 500):
 @app.get("/api/stats")
 def legacy_stats():
     return jobs.get_stats()
+
+
+@app.get("/api/search")
+def legacy_search(
+    q: str = "",
+    cv: str = "default",
+    limit: int = 50,
+    min_score: int = 0,
+    work_type: str | None = None,
+):
+    """Legacy frontend endpoint — map to v1 search and adapt the response shape
+    ({jobs, total} instead of {items, total})."""
+    res = jobs.search_jobs(
+        q=q, source=None, work_type=work_type, min_score=min_score,
+        max_score=100, skills=None, location=None, sort_by="score_desc",
+        page=1, page_size=max(1, min(int(limit), 100)),
+    )
+    return {"jobs": res.get("items", []), "total": res.get("total", 0), "cv": cv}
+
+
+@app.get("/api/cv_list")
+def legacy_cv_list():
+    """Public edition — a single built-in baseline profile (no user CV files stored)."""
+    return {
+        "cvs": [{"id": "default", "name": "الـ CV الأساسي (EN/AR)"}],
+        "default": "default",
+    }
+
+
+@app.post("/api/cv_generate")
+def legacy_cv_generate():
+    """Not available in the public edition — this deployment never stores CV files."""
+    return JSONResponse(
+        status_code=501,
+        content={
+            "success": False,
+            "message": "إنشاء السيرة الذاتية غير متاح في النسخة العامة",
+        },
+    )
 
 
 # ─── Static Assets Handler ───────────────────────────────────────────────

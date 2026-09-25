@@ -19,3 +19,12 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+.vercel
+.env*
+
+# ── Session memory (local only — not published) ──
+AGENTS.md
+PROGRESS.md
+NEXT_STEPS.md
+DECISIONS.md
+INDEX.md

@@ -1,0 +1,32 @@
+# Superset of .gitignore — Vercel uses ONLY this file when present
+# (so every .gitignore rule must be repeated here).
+
+# ── Personal / private data — NEVER uploaded ──
+cv/
+data/
+inbox/
+versions/
+*.env
+.env*
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── OS / editor / logs ──
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+.vercel
+
+# ── Local session memory — never uploaded ──
+AGENTS.md
+PROGRESS.md
+NEXT_STEPS.md
+DECISIONS.md
+INDEX.md
