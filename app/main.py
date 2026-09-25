@@ -14,6 +14,14 @@ from app.config import settings
 from app.routers import jobs, analysis, vet
 from app.database_factory import init_db, close_pools, _BACKEND
 
+# Windows console (cp1252) cannot encode emoji/Arabic in print() and would kill
+# startup with UnicodeEncodeError. Force UTF-8 on stdio (safe no-op on Linux).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
