@@ -51,6 +51,17 @@ const LANG = {
       langTitle: 'اللغة',
     },
     priority: { high: 'مهم', medium: 'متوسط', low: 'منخفض' },
+    wizard: {
+      title: 'ابدأ بمهاراتك',
+      desc: 'أدخل مهاراتك وسنوات خبرتك ومجالك — نعرض لك الوظائف المطابقة فقط',
+      skillsLabel: 'المهارات',
+      yearsLabel: 'سنوات الخبرة',
+      fieldLabel: 'المجال',
+      searchBtn: 'ابحث عن وظائفي',
+      browseAll: 'استعرض السوق كاملاً',
+      skillsPlaceholder: 'مثال: مشتريات، سلاسل توريد، مفاوضات، ERP',
+      yearsPlaceholder: '0-40',
+    },
   },
   en: {
     dir: 'ltr',
@@ -98,6 +109,17 @@ const LANG = {
       langTitle: 'Language',
     },
     priority: { high: 'High', medium: 'Medium', low: 'Low' },
+    wizard: {
+      title: 'Start with Your Skills',
+      desc: 'Enter your skills, years of experience, and field — we show only matching jobs',
+      skillsLabel: 'Skills',
+      yearsLabel: 'Years of Experience',
+      fieldLabel: 'Field',
+      searchBtn: 'Find My Jobs',
+      browseAll: 'Browse Full Market',
+      skillsPlaceholder: 'e.g., Procurement, Supply Chain, Negotiation, ERP',
+      yearsPlaceholder: '0-40',
+    },
   },
 };
 
@@ -127,6 +149,9 @@ const state = {
   currentPageNum: 1,
   hasMore: true,
   filterSig: '',
+  // Wizard mode (empty start)
+  wizardMode: true,
+  wizardData: JSON.parse(localStorage.getItem('sjm-wizard-data') || '{}'),
 };
 
 function t() { return LANG[state.lang]; }
@@ -163,8 +188,15 @@ function navigate(page) {
   document.getElementById('topbarTitle').textContent = titles[page] || '';
   // Lazy-load page data
   if (page === 'dashboard' && !state.stats) loadStats();
-  if (page === 'jobs' && state.allJobs.length === 0) loadJobs();
-  if (page === 'jobs' && state.allJobs.length > 0) renderJobs(getFilteredJobs());
+  if (page === 'jobs') {
+    if (state.wizardMode) {
+      showWizard(); // أظهر نموذج Wizard بدلاً من تحميل الوظائف
+    } else if (!state.allJobs.length) {
+      loadJobs();
+    } else {
+      renderJobs(getFilteredJobs());
+    }
+  }
   if (page === 'analytics' && !state.stats) loadStats();
   if (page === 'analytics' && state.stats) renderAnalyticsPage();
   if (page === 'hr') renderHRPage();
@@ -178,7 +210,7 @@ function initRouter() {
   const hash = location.hash.replace('#/', '');
   const valid = ['dashboard', 'jobs', 'analytics', 'hr', 'gaps', 'settings', 'myapps'];
   if (valid.includes(hash)) navigate(hash);
-  else navigate('dashboard');
+  else navigate('jobs'); // يبدأ بصفحة الوظائف لتظهر Wizard فوراً
 }
 
 // ─── Theme ─────────────────────────────────────────────────────────────
@@ -570,6 +602,38 @@ function getFilteredJobs() {
     });
   }
 
+  // Wizard: فلتر سنوات الخبرة (تقريبي بالكلمات المفتاحية في العنوان)
+  if (state._wizardYearsFilter) {
+    const y = state._wizardYearsFilter;
+    const seniorKeywords = state._wizardSeniorKeywords || ['senior', 'lead', 'principal', 'manager', 'head', 'director', 'كبير', 'رئيس', 'مدير'];
+    const juniorKeywords = state._wizardJuniorKeywords || ['junior', 'entry', 'assistant', 'trainee', 'intern', 'مبتدئ', 'متدرب', 'مساعد'];
+
+    filtered = filtered.filter(j => {
+      const title = (j.title || '').toLowerCase();
+      if (y >= 8) return seniorKeywords.some(k => title.includes(k));
+      if (y <= 2) return juniorKeywords.some(k => title.includes(k));
+      return true; // 3-7 سنوات: لا فلترة
+    });
+  }
+
+  // Wizard: فلتر المجال (إذا اختار)
+  if (state._wizardFieldFilter) {
+    const fieldKeywords = {
+      procurement: ['procurement', 'supply chain', 'purchasing', 'sourcing', 'logistics', 'مشتريات', 'إمداد', 'سلاسل توريد', 'شراء'],
+      sales: ['sales', 'business development', 'account executive', 'marketing', 'مبيعات', 'تسويق', 'تطوير أعمال'],
+      pharma: ['pharma', 'pharmacy', 'pharmacist', 'medical', 'healthcare', 'clinical', 'صيدل', 'طبي', 'دواء', 'صحة'],
+      mgmt: ['management', 'operations', 'project', 'director', 'head of', 'vp', 'إدارة', 'عمليات', 'مشروع', 'مدير'],
+    };
+    const keywords = fieldKeywords[state._wizardFieldFilter] || [];
+    if (keywords.length) {
+      filtered = filtered.filter(j => {
+        const hay = ((j.title || '') + ' ' + (j.company || '') + ' ' + (j.category || '') + ' ' +
+          (j.analysis?.matched || []).map(m => m.category).join(' ')).toLowerCase();
+        return keywords.some(kw => hay.includes(kw.toLowerCase()));
+      });
+    }
+  }
+
   state.filteredJobs = sortArray(filtered);
   return state.filteredJobs;
 }
@@ -659,6 +723,10 @@ function resetAll() {
   state.selectedSources = [];
   state.selectedCategories = [];
   state.applyType = 'all';
+  state._wizardYearsFilter = null;
+  state._wizardSeniorKeywords = null;
+  state._wizardJuniorKeywords = null;
+  state._wizardFieldFilter = null;
   document.querySelectorAll('#workTypeGroup .filter-chip').forEach(b => b.classList.toggle('active', b.dataset.worktype === 'all'));
   document.querySelectorAll('#matchScoreGroup .filter-chip').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
   document.querySelectorAll('#applyTypeGroup .filter-chip').forEach(b => b.classList.toggle('active', b.dataset.apply === 'all'));
@@ -672,12 +740,126 @@ function resetAll() {
   else renderJobs(getFilteredJobs());
 }
 
+// ─── Wizard Mode (Empty Start) ─────────────────────────────────────────
+function showWizard() {
+  const g = document.getElementById('jobsGrid');
+  const g2 = document.getElementById('jobsExplorerGrid');
+  if (!g && !g2) return;
+  const tr = t();
+  const w = tr.wizard;
+
+  const totalJobsText = state.allJobs.length
+    ? (state.lang === 'ar' ? `${state.allJobs.length} وظيفة` : `${state.allJobs.length} jobs`)
+    : (state.lang === 'ar' ? '397 وظيفة' : '397 jobs');
+
+  const wizardHtml = `
+    <div class="wizard-hero">
+      <div class="wizard-icon">🎯</div>
+      <h2>${w.title}</h2>
+      <p class="wizard-desc">${w.desc}</p>
+      <div class="wizard-form">
+        <div class="wizard-field">
+          <label>${w.skillsLabel}</label>
+          <input type="text" id="wizSkills" placeholder="${w.skillsPlaceholder}" value="${esc(state.wizardData.skills || '')}">
+        </div>
+        <div class="wizard-field">
+          <label>${w.yearsLabel}</label>
+          <input type="number" id="wizYears" min="0" max="40" placeholder="${w.yearsPlaceholder}" value="${esc(state.wizardData.years || '')}">
+        </div>
+        <div class="wizard-field">
+          <label>${w.fieldLabel}</label>
+          <select id="wizField">
+            <option value="">${state.lang === 'ar' ? 'اختر المجال' : 'Select field'}</option>
+            <option value="procurement" ${state.wizardData.field === 'procurement' ? 'selected' : ''}>${state.lang === 'ar' ? 'مشتريات / سلاسل توريد' : 'Procurement / Supply Chain'}</option>
+            <option value="sales" ${state.wizardData.field === 'sales' ? 'selected' : ''}>${state.lang === 'ar' ? 'مبيعات / تطوير أعمال' : 'Sales / Business Development'}</option>
+            <option value="pharma" ${state.wizardData.field === 'pharma' ? 'selected' : ''}>${state.lang === 'ar' ? 'صيدلة / طبي' : 'Pharma / Medical'}</option>
+            <option value="mgmt" ${state.wizardData.field === 'mgmt' ? 'selected' : ''}>${state.lang === 'ar' ? 'إدارة / عمليات' : 'Management / Operations'}</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-lg wizard-search-btn" onclick="runWizardSearch()">
+          🔍 ${w.searchBtn}
+        </button>
+      </div>
+      <div class="wizard-divider"></div>
+      <button class="btn btn-secondary wizard-browse-btn" onclick="exitWizardMode()">
+        🌐 ${w.browseAll} (${totalJobsText})
+      </button>
+    </div>`;
+
+  if (g) g.innerHTML = wizardHtml;
+  if (g2) g2.innerHTML = wizardHtml;
+}
+
+function runWizardSearch() {
+  const skills = document.getElementById('wizSkills')?.value?.trim() || '';
+  const years = document.getElementById('wizYears')?.value || '';
+  const field = document.getElementById('wizField')?.value || '';
+
+  state.wizardData = { skills, years, field };
+  localStorage.setItem('sjm-wizard-data', JSON.stringify(state.wizardData));
+
+  // تحميل الوظائف لو لم تُحمل بعد
+  if (!state.allJobs.length) {
+    loadJobs().then(() => applyWizardFilters());
+  } else {
+    applyWizardFilters();
+  }
+}
+
+function applyWizardFilters() {
+  const { skills, years, field } = state.wizardData;
+
+  // نبحث بالمهارات ككلمات مفتاحية
+  if (skills) {
+    state.searchTerm = skills.toLowerCase();
+    document.getElementById('searchBox').value = skills;
+    document.getElementById('searchClear').classList.add('show');
+  }
+
+  // فلتر سنوات الخبرة (تقريبي بالكلمات المفتاحية في العنوان)
+  if (years) {
+    const y = parseInt(years);
+    const seniorKeywords = ['senior', 'lead', 'principal', 'manager', 'head', 'director', 'كبير', 'رئيس', 'مدير'];
+    const juniorKeywords = ['junior', 'entry', 'assistant', 'trainee', 'intern', 'مبتدئ', 'متدرب', 'مساعد'];
+
+    // نطبق الفلتر بعد تحميل الوظائف
+    state._wizardYearsFilter = y;
+    state._wizardSeniorKeywords = seniorKeywords;
+    state._wizardJuniorKeywords = juniorKeywords;
+  }
+
+  // فلتر المجال (إذا اختار)
+  if (field) {
+    state._wizardFieldFilter = field;
+  }
+
+  // نخرج من Wizard mode ونعرض النتائج
+  state.wizardMode = false;
+  state.currentPageNum = 1;
+  navigate('jobs'); // سيعيد renderJobs مع الفلاتر
+}
+
+function exitWizardMode() {
+  state.wizardMode = false;
+  if (!state.allJobs.length) {
+    loadJobs();
+  } else {
+    renderJobs(getFilteredJobs());
+  }
+}
+
 // ─── Render Jobs ───────────────────────────────────────────────────────
 function renderJobs(jobs) {
   const g = document.getElementById('jobsGrid');
   const g2 = document.getElementById('jobsExplorerGrid');
   if (!g && !g2) return;
   const tr = t();
+
+  // لو في Wizard mode والصفحة الحالية Jobs → أظهر النموذج
+  if (state.wizardMode && state.currentPage === 'jobs') {
+    showWizard();
+    return;
+  }
 
   if (!jobs.length) {
     const emptyHtml = `<div class="empty-state">
@@ -1431,8 +1613,7 @@ function init() {
     document.getElementById('sidebar')?.classList.add('collapsed');
   }
   initRouter();
-  loadJobs();
-  loadStats();
+  // loadJobs() و loadStats() تُستدعى عند الطلب (lazy) — وليس عند التحميل
   loadApplied();
 }
 
