@@ -27,7 +27,7 @@ for _stream in (sys.stdout, sys.stderr):
 async def lifespan(app: FastAPI):
     """Application lifespan handler - startup and shutdown."""
     # Startup
-    print(f"🔧 Starting Smart Job Matcher (DB backend: {_BACKEND})")
+    print(f"🔧 Starting Winner Jobs (DB backend: {_BACKEND})")
     if settings.use_postgresql:
         print("🐘 Using PostgreSQL (Supabase)")
         init_db()
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 
 # ─── App Creation ────────────────────────────────────────────────────────
 app = FastAPI(
-    title="Smart Job Matcher",
+    title="Winner Jobs",
     description="منصة ذكية لمطابقة الوظائف وتحليل السيرة الذاتية",
     version="2.0.0",
     docs_url="/api/docs",
@@ -86,7 +86,7 @@ def serve_index():
     index_path = frontend_dir / "index.html"
     if index_path.exists():
         return FileResponse(str(index_path), media_type="text/html")
-    return {"message": "Smart Job Matcher API — visit /api/docs for documentation"}
+    return {"message": "Winner Jobs API — visit /api/docs for documentation"}
 
 
 @app.get("/landing")
@@ -188,7 +188,7 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
-    print(f"\n🎯 Smart Job Matcher على: http://{settings.HOST}:{settings.PORT}/")
+    print(f"\n🎯 Winner Jobs على: http://{settings.HOST}:{settings.PORT}/")
     print(f"📚 API Docs: http://{settings.HOST}:{settings.PORT}/api/docs")
     print(f"🏠 Landing:  http://{settings.HOST}:{settings.PORT}/landing\n")
     uvicorn.run(

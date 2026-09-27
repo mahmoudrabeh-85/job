@@ -60,6 +60,12 @@ class ApplyStatusRequest(BaseModel):
     notes: str = ""
 
 
+class MatchRequest(BaseModel):
+    skills: str = ""
+    years: Optional[int] = None
+    field: str = ""
+
+
 @router.get("/jobs")
 def list_jobs(
     page: int = Query(1, ge=1),
@@ -88,6 +94,74 @@ def list_jobs(
 
     result["items"] = enriched
     return result
+
+
+@router.post("/match")
+def match_jobs(req: MatchRequest):
+    """Rank indexed jobs against the skills and experience entered for this search.
+
+    Candidate inputs are used for this request only and are never persisted. The
+    public database stores job metadata rather than full descriptions, so matching
+    uses indexed title, company, location, and category fields only.
+    """
+    if not db_exists():
+        return {"items": [], "total": 0, "filters": {"skills": req.skills, "years": req.years, "field": req.field}}
+
+    field_terms = {
+        "procurement": ["procurement", "purchasing", "supply chain", "logistics", "مشتريات", "سلاسل توريد", "إمداد"],
+        "sales": ["sales", "business development", "account", "مبيعات", "تطوير أعمال"],
+        "pharma": ["pharma", "pharmaceutical", "medical", "healthcare", "صيدلة", "طبي", "دواء"],
+        "mgmt": ["management", "operations", "manager", "إدارة", "عمليات"],
+    }
+    terms = [term.strip().casefold() for term in req.skills.replace("،", ",").split(",") if term.strip()]
+    if not terms:
+        terms = [term.strip().casefold() for term in req.skills.split() if term.strip()]
+    selected_field_terms = field_terms.get((req.field or "").casefold(), [])
+    jobs = fetch_all("SELECT * FROM jobs ORDER BY id DESC")
+    ranked = []
+
+    senior_terms = ("senior", "lead", "principal", "manager", "head", "director", "مدير", "رئيس", "خبير")
+    junior_terms = ("junior", "entry", "assistant", "trainee", "intern", "مبتدئ", "مساعد", "متدرب")
+    years = req.years
+
+    for job in jobs:
+        title = job.get("title", "") or ""
+        searchable = " ".join(str(job.get(k, "") or "") for k in ("title", "company", "location", "category")).casefold()
+        matched_terms = [term for term in terms if term in searchable]
+        matched_field = any(term in searchable for term in selected_field_terms)
+        if not matched_terms and not matched_field:
+            continue
+
+        title_lower = title.casefold()
+        # Experience input affects seniority fit; it is a soft ranking signal
+        # because source listings rarely provide a normalized years field.
+        seniority_fit = None
+        if years is not None:
+            if years <= 2:
+                seniority_fit = any(term in title_lower for term in junior_terms)
+                seniority_fit = True if not any(term in title_lower for term in senior_terms) else seniority_fit
+            elif years >= 8:
+                seniority_fit = any(term in title_lower for term in senior_terms)
+                seniority_fit = True if not any(term in title_lower for term in junior_terms) else seniority_fit
+            else:
+                seniority_fit = not any(term in title_lower for term in junior_terms)
+
+        coverage = len(matched_terms) / max(len(terms), 1) if terms else 1.0
+        score = round(coverage * 85 + (10 if matched_field else 0) + (5 if seniority_fit else 0))
+        analysis = {
+            "score": min(score, 100),
+            "matched": [{"category": "user_skill", "skills": [term], "level": "strong"} for term in matched_terms],
+            "missing": [],
+            "matched_count": len(matched_terms),
+            "missing_count": max(0, len(terms) - len(matched_terms)),
+        }
+        formatted = _format_job(job, analysis)
+        formatted["score"] = analysis["score"]
+        ranked.append((seniority_fit is False, -analysis["score"], formatted))
+
+    ranked.sort(key=lambda row: (row[0], row[1], str(row[2].get("posted", ""))), reverse=False)
+    items = [row[2] for row in ranked]
+    return {"items": items, "total": len(items), "filters": {"skills": req.skills, "years": req.years, "field": req.field}}
 
 
 @router.get("/jobs/{job_id}")

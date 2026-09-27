@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   Smart Job Matcher — SPA Application (app.js)
+   Winner Jobs — SPA Application (app.js)
    Router + State + API Client + i18n (AR/EN)
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -7,7 +7,7 @@
 const LANG = {
   ar: {
     dir: 'rtl',
-    brand: 'محلل الوظائف الذكي',
+    brand: 'Winner Jobs',
     nav: { dashboard: 'لوحة التحكم', jobs: 'الوظائف', analytics: 'التحليلات', hr: 'أدوات HR', gaps: 'فجوات المهارات', settings: 'الإعدادات', myapps: 'تقديماتي' },
     stats: { totalJobs: 'وظيفة مطابقة', avgScore: 'متوسط التقييم', highMatch: 'تطابق عالي', sources: 'مصادر' },
     search: { placeholder: 'ابحث بالاسم، الشركة، الموقع...', clear: 'مسح' },
@@ -65,7 +65,7 @@ const LANG = {
   },
   en: {
     dir: 'ltr',
-    brand: 'Smart Job Matcher',
+    brand: 'Winner Jobs',
     nav: { dashboard: 'Dashboard', jobs: 'Jobs', analytics: 'Analytics', hr: 'HR Tools', gaps: 'Skill Gaps', settings: 'Settings', myapps: 'My Applications' },
     stats: { totalJobs: 'Matched Jobs', avgScore: 'Avg Score', highMatch: 'High Match', sources: 'Sources' },
     search: { placeholder: 'Search by title, company, location...', clear: 'Clear' },
@@ -152,7 +152,14 @@ const state = {
   // Wizard mode (empty start)
   wizardMode: true,
   wizardData: JSON.parse(localStorage.getItem('sjm-wizard-data') || '{}'),
+  // Distinguishes an empty personalized result from jobs that have not loaded.
+  matchSearchCompleted: false,
+  // True while a wizard match request is in flight — protects it from default loads.
+  matchSearchPending: false,
 };
+
+// Sequence guard: أحدث طلب (match أو loadJobs) فقط يحق للحصول على عرض النتائج
+let matchSearchSeq = 0;
 
 function t() { return LANG[state.lang]; }
 
@@ -191,7 +198,9 @@ function navigate(page) {
   if (page === 'jobs') {
     if (state.wizardMode) {
       showWizard(); // أظهر نموذج Wizard بدلاً من تحميل الوظائف
-    } else if (!state.allJobs.length) {
+    } else if (state.matchSearchPending) {
+      // بحث match قيد التنفيذ — لا شيء يحل محل نتائجه أو هيكل التحميل الظاهر
+    } else if (!state.allJobs.length && !state.matchSearchCompleted) {
       loadJobs();
     } else {
       renderJobs(getFilteredJobs());
@@ -280,9 +289,13 @@ function rebuildUI() {
 
 // ─── Data Loading ──────────────────────────────────────────────────────
 async function loadJobs() {
+  const seq = ++matchSearchSeq; // يلغي أي بحث match معلّق — قرار العرض النهائي يتحدد عند وصول كل رد
+  state.matchSearchCompleted = false;
+  state.matchSearchPending = false;
   showSkeletons();
   try {
     const d = await api('/api/v1/jobs?page=1&page_size=500');
+    if (seq !== matchSearchSeq) return; // بدأ بحث match أثناء هذا الطلب — رده سيُعرض بدلاً منا
     state.allJobs = d.items || d.jobs || [];
     updateStatCards();
     populateSourceChips();
@@ -740,6 +753,27 @@ function resetAll() {
   else renderJobs(getFilteredJobs());
 }
 
+function browseAllJobs() {
+  state.wizardMode = false;
+  state.matchSearchCompleted = false;
+  state.searchTerm = '';
+  state.currentFilter = 'all';
+  state.currentWorkType = 'all';
+  state.selectedSkills = [];
+  state.selectedSources = [];
+  state.selectedCategories = [];
+  state.applyType = 'all';
+  state._wizardYearsFilter = null;
+  state._wizardSeniorKeywords = null;
+  state._wizardJuniorKeywords = null;
+  state._wizardFieldFilter = null;
+  const searchBox = document.getElementById('searchBox');
+  if (searchBox) searchBox.value = '';
+  document.getElementById('searchClear')?.classList.remove('show');
+  state.allJobs = [];
+  loadJobs();
+}
+
 // ─── Wizard Mode (Empty Start) ─────────────────────────────────────────
 function showWizard() {
   const g = document.getElementById('jobsGrid');
@@ -781,67 +815,84 @@ function showWizard() {
         </button>
       </div>
       <div class="wizard-divider"></div>
-      <button class="btn btn-secondary wizard-browse-btn" onclick="exitWizardMode()">
+      <button class="btn btn-secondary wizard-browse-btn" onclick="browseAllJobs()">
         🌐 ${w.browseAll} (${totalJobsText})
       </button>
     </div>`;
 
-  if (g) g.innerHTML = wizardHtml;
-  if (g2) g2.innerHTML = wizardHtml;
+  // الصفحة النشطة فقط: النموذج يُحقن مرتين (dashboard + jobs) بنفس المعرّفات،
+  // وgetElementById يلتقط النسخة المخفية فتُقرأ قيم فارغة عند البحث.
+  const activeGrid = state.currentPage === 'jobs' ? (g2 || g) : (g || g2);
+  if (activeGrid) activeGrid.innerHTML = wizardHtml;
 }
 
-function runWizardSearch() {
-  const skills = document.getElementById('wizSkills')?.value?.trim() || '';
-  const years = document.getElementById('wizYears')?.value || '';
-  const field = document.getElementById('wizField')?.value || '';
+function readWizardInput(id) {
+  // النموذج مكرر بين صفحتين بنفس المعرّفات — نقرأ من النسخة داخل الصفحة النشطة
+  const nodes = Array.from(document.querySelectorAll('#' + id));
+  const pick = nodes.find(n => n.closest('.page-view')?.classList.contains('active'))
+    || nodes.find(n => n.offsetParent !== null || n.getClientRects().length > 0);
+  return (pick || nodes[0])?.value || '';
+}
+
+async function runWizardSearch() {
+  const skills = readWizardInput('wizSkills').trim();
+  const yearsValue = readWizardInput('wizYears').trim();
+  const years = yearsValue === '' ? null : Number(yearsValue);
+  const field = readWizardInput('wizField');
+  const seq = ++matchSearchSeq;
 
   state.wizardData = { skills, years, field };
   localStorage.setItem('sjm-wizard-data', JSON.stringify(state.wizardData));
-
-  // تحميل الوظائف لو لم تُحمل بعد
-  if (!state.allJobs.length) {
-    loadJobs().then(() => applyWizardFilters());
-  } else {
-    applyWizardFilters();
-  }
-}
-
-function applyWizardFilters() {
-  const { skills, years, field } = state.wizardData;
-
-  // نبحث بالمهارات ككلمات مفتاحية
-  if (skills) {
-    state.searchTerm = skills.toLowerCase();
-    document.getElementById('searchBox').value = skills;
-    document.getElementById('searchClear').classList.add('show');
-  }
-
-  // فلتر سنوات الخبرة (تقريبي بالكلمات المفتاحية في العنوان)
-  if (years) {
-    const y = parseInt(years);
-    const seniorKeywords = ['senior', 'lead', 'principal', 'manager', 'head', 'director', 'كبير', 'رئيس', 'مدير'];
-    const juniorKeywords = ['junior', 'entry', 'assistant', 'trainee', 'intern', 'مبتدئ', 'متدرب', 'مساعد'];
-
-    // نطبق الفلتر بعد تحميل الوظائف
-    state._wizardYearsFilter = y;
-    state._wizardSeniorKeywords = seniorKeywords;
-    state._wizardJuniorKeywords = juniorKeywords;
-  }
-
-  // فلتر المجال (إذا اختار)
-  if (field) {
-    state._wizardFieldFilter = field;
-  }
-
-  // نخرج من Wizard mode ونعرض النتائج
   state.wizardMode = false;
   state.currentPageNum = 1;
-  navigate('jobs'); // سيعيد renderJobs مع الفلاتر
+  state.searchTerm = '';
+  state.currentFilter = 'all';
+  state.currentWorkType = 'all';
+  state.selectedSkills = [];
+  state.selectedSources = [];
+  state.selectedCategories = [];
+  state.applyType = 'all';
+  state._wizardYearsFilter = null;
+  state._wizardFieldFilter = null;
+  const searchBox = document.getElementById('searchBox');
+  if (searchBox) searchBox.value = '';
+  document.getElementById('searchClear')?.classList.remove('show');
+  showSkeletons();
+  state.matchSearchCompleted = false;
+  state.matchSearchPending = true;
+
+  try {
+    const result = await api('/api/v1/match', {
+      method: 'POST',
+      body: JSON.stringify({ skills, years, field }),
+    });
+    state.matchSearchPending = false;
+    if (seq !== matchSearchSeq) return; // بدأ بحث أحدث — نتجاهل هذا الرد
+    const matchedJobs = result.items ?? result.jobs ?? result.results;
+    if (!Array.isArray(matchedJobs)) throw new Error('Unexpected match response shape');
+    state.allJobs = matchedJobs;
+    state.matchSearchCompleted = true;
+    updateStatCards();
+    populateSourceChips();
+    // Set results before navigating. Otherwise navigate('jobs') sees an empty
+    // list, starts loadJobs(), and that slower default-profile response can
+    // overwrite the personalized match results.
+    navigate('jobs');
+    renderJobs(getFilteredJobs());
+  } catch (e) {
+    state.matchSearchPending = false;
+    if (seq !== matchSearchSeq) return;
+    state.matchSearchCompleted = false;
+    state.wizardMode = true;
+    navigate('jobs');
+    showWizard();
+    toast(t().error);
+  }
 }
 
 function exitWizardMode() {
   state.wizardMode = false;
-  if (!state.allJobs.length) {
+  if (!state.allJobs.length && !state.matchSearchCompleted) {
     loadJobs();
   } else {
     renderJobs(getFilteredJobs());
@@ -866,7 +917,7 @@ function renderJobs(jobs) {
       <div class="empty-icon">🔍</div>
       <h2 style="font-size:1.2rem; margin-bottom:8px;">${tr.empty.title}</h2>
       <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:16px;">${state.searchTerm ? tr.empty.searchDesc : tr.empty.desc}</p>
-      <button class="btn-primary" onclick="resetAll()">${tr.empty.reset}</button>
+      <button class="btn-primary" onclick="browseAllJobs()">${tr.empty.reset}</button>
     </div>`;
     if (g) g.innerHTML = emptyHtml;
     if (g2) g2.innerHTML = emptyHtml;

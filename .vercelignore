@@ -15,6 +15,10 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+check_deploy.py
+check_js.py
+check_scripts.py
+.freebuff/
 
 # ── OS / editor / logs ──
 .DS_Store
