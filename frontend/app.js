@@ -13,7 +13,7 @@ const LANG = {
     search: { placeholder: 'ابحث بالاسم، الشركة، الموقع...', clear: 'مسح' },
     filters: { all: 'الكل', high: 'عالٍ', mid: 'متوسط', low: 'منخفض' },
     sort: { scoreDesc: 'الأعلى تقييماً', scoreAsc: 'الأدنى تقييماً', titleAsc: 'الاسم (أ-ي)', source: 'المصدر' },
-    job: { apply: 'قدّم الآن ←', score: 'نسبة التطابق', matched: 'المهارات المطابقة', missing: 'الفجوة — دورات مقترحة', hrLetter: 'رسالة HR', copy: '📋 نسخ الرسالة', copied: 'تم نسخ الرسالة ✓', copyFail: 'فشل النسخ' },
+    job: { apply: 'قدّم الآن ←', score: 'نسبة التطابق', matched: 'المهارات المطابقة', missing: 'الفجوة — دورات مقترحة', hrLetter: 'رسالة HR', copy: '📋 نسخ الرسالة', copied: 'تم نسخ الرسالة ✓', copyFail: 'فشل النسخ', coverLetter: 'خطاب التغطية', coverLoading: 'جاري تجهيز خطاب التغطية...' },
     empty: { title: 'لا توجد وظائف مطابقة', desc: 'جرّب تغيير الفلتر أو كلمات البحث', searchDesc: 'لا نتائج لبحثك. جرّب كلمات أخرى', reset: 'عرض كل الوظائف' },
     loading: 'جاري التحميل...',
     error: 'فشل تحميل البيانات',
@@ -71,7 +71,7 @@ const LANG = {
     search: { placeholder: 'Search by title, company, location...', clear: 'Clear' },
     filters: { all: 'All', high: 'High', mid: 'Medium', low: 'Low' },
     sort: { scoreDesc: 'Highest Score', scoreAsc: 'Lowest Score', titleAsc: 'Name (A-Z)', source: 'Source' },
-    job: { apply: 'Apply Now →', score: 'Match Score', matched: 'Matched Skills', missing: 'Gaps — Suggested Courses', hrLetter: 'HR Letter', copy: '📋 Copy Letter', copied: 'Letter copied ✓', copyFail: 'Copy failed' },
+    job: { apply: 'Apply Now →', score: 'Match Score', matched: 'Matched Skills', missing: 'Gaps — Suggested Courses', hrLetter: 'HR Letter', copy: '📋 Copy Letter', copied: 'Letter copied ✓', copyFail: 'Copy failed', coverLetter: 'Cover Letter', coverLoading: 'Preparing cover letter...' },
     empty: { title: 'No matching jobs', desc: 'Try changing your filters or search terms', searchDesc: 'No results for your search. Try different keywords', reset: 'Show all jobs' },
     loading: 'Loading...',
     error: 'Failed to load data',
@@ -135,6 +135,7 @@ const state = {
   selectedSkills: [],
   selectedSources: [],
   selectedCategories: [],
+  directOnly: false,
   currentSort: 'score_desc',
   searchTerm: '',
   searchTimer: null,
@@ -144,6 +145,21 @@ const state = {
   modalJob: null,
   appliedIds: null,
   applyType: 'all',
+  // Application Center (lazy sections, sanitized port — skills from visitor input only)
+  top50Jobs: null,
+  top50Loading: false,
+  top50Shown: 10,
+  top50Step: 10,
+  top50Generated: '',
+  dailyJobs: null,
+  dailyLoading: false,
+  dailyGenerated: '',
+  followupsData: null,
+  followupsLoading: false,
+  modalCover: {},
+  coverActive: false,
+  showSimplifyEdit: false,
+  savedSearches: JSON.parse(localStorage.getItem('sjm-saved-searches') || '[]'),
   // Pagination state
   pageSize: 20,
   currentPageNum: 1,
@@ -195,6 +211,7 @@ function navigate(page) {
   document.getElementById('topbarTitle').textContent = titles[page] || '';
   // Lazy-load page data
   if (page === 'dashboard' && !state.stats) loadStats();
+  if (page === 'dashboard') { dailyState(); applyTop50State(); }
   if (page === 'jobs') {
     if (state.wizardMode) {
       showWizard(); // أظهر نموذج Wizard بدلاً من تحميل الوظائف
@@ -205,6 +222,7 @@ function navigate(page) {
     } else {
       renderJobs(getFilteredJobs());
     }
+    renderSavedSearches();
   }
   if (page === 'analytics' && !state.stats) loadStats();
   if (page === 'analytics' && state.stats) renderAnalyticsPage();
@@ -529,10 +547,29 @@ function populateSourceChips() {
     counts[s] = (counts[s] || 0) + 1;
   });
   const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-  box.innerHTML = names.map(s =>
+  const DIRECT_SOURCES = ['greenhouse', 'lever', 'ashby', 'arbeitnow', 'jazz'];
+  const directCount = state.allJobs.filter(isDirectEmployerJob).length;
+  const directChip = directCount > 0
+    ? `<div class="filter-chip${state.directOnly ? ' active' : ''}" data-source="__direct__" onclick="toggleDirectOnly(this)">` +
+      `<span>🏢 من الشركات مباشرة</span><span class="chip-count">${directCount}</span></div>`
+    : '';
+  box.innerHTML = directChip + names.map(s =>
     `<div class="filter-chip${state.selectedSources.includes(s) ? ' active' : ''}" data-source="${esc(s)}" onclick="toggleSourceChip('${esc(s)}', this)">` +
     `<span>🔗 ${esc(s)}</span><span class="chip-count">${counts[s]}</span></div>`
   ).join('') || '<span style="color:var(--text-muted);font-size:.82rem">لا مصادر بعد</span>';
+}
+
+const DIRECT_EMPLOYER_PREFIXES = ['greenhouse', 'lever', 'ashby', 'arbeitnow', 'jazz'];
+function isDirectEmployerJob(j) {
+  const src = (j.source || '').toLowerCase();
+  return DIRECT_EMPLOYER_PREFIXES.some(d => src.startsWith(d + ':') || src === d);
+}
+
+function toggleDirectOnly(el) {
+  state.directOnly = !state.directOnly;
+  el.classList.toggle('active', state.directOnly);
+  state.currentPageNum = 1;
+  renderJobs(getFilteredJobs());
 }
 
 function handleOverlayClick(e) {
@@ -602,6 +639,15 @@ function getFilteredJobs() {
   // Sources filter (multi-select: empty = all sites)
   if (state.selectedSources.length > 0) {
     filtered = filtered.filter(j => state.selectedSources.includes((j.source || '').toLowerCase()));
+  }
+
+  // Direct-employers filter: وظائف من الشركات مباشرة (ATS) — greenhouse/lever/ashby/arbeitnow/jazz
+  const DIRECT_SOURCES = ['greenhouse', 'lever', 'ashby', 'arbeitnow', 'jazz'];
+  if (state.directOnly) {
+    filtered = filtered.filter(j => {
+      const src = (j.source || '').toLowerCase();
+      return DIRECT_SOURCES.some(d => src.startsWith(d + ':') || src === d);
+    });
   }
 
   // Categories filter (multi-select: e.g. pharma only)
@@ -735,6 +781,7 @@ function resetAll() {
   state.selectedSkills = [];
   state.selectedSources = [];
   state.selectedCategories = [];
+  state.directOnly = false;
   state.applyType = 'all';
   state._wizardYearsFilter = null;
   state._wizardSeniorKeywords = null;
@@ -762,6 +809,7 @@ function browseAllJobs() {
   state.selectedSkills = [];
   state.selectedSources = [];
   state.selectedCategories = [];
+  state.directOnly = false;
   state.applyType = 'all';
   state._wizardYearsFilter = null;
   state._wizardSeniorKeywords = null;
@@ -946,6 +994,9 @@ function renderJobs(jobs) {
       `<span class="skill-match-tag">✓ ${esc(m.category)}</span>`
     ).join('');
 
+    const directBadge = isDirectEmployerJob(j)
+      ? '<span class="tag-pill tag-direct">🏢 من الشركة مباشرة</span>' : '';
+
     return `
     <div class="job-card" style="animation-delay:${Math.min(idx * 30, 300)}ms" onclick='openModal(${JSON.stringify(j).replace(/'/g, "&#39;")})'>
       <div class="job-card-top">
@@ -962,6 +1013,7 @@ function renderJobs(jobs) {
       <div class="job-tags-row">
         ${isRemote ? '<span class="tag-pill tag-remote">🌐 Remote</span>' : '<span class="tag-pill">🏢 ' + esc(j.location || 'Onsite') + '</span>'}
         ${j.salary ? '<span class="tag-pill tag-salary">💰 ' + esc(j.salary) + '</span>' : ''}
+        ${directBadge}
       </div>
 
       <div class="skills-list">
@@ -1011,6 +1063,8 @@ function loadMoreJobs() {
 async function openModal(job) {
   const tr = t();
   state.modalJob = job;
+  state.modalCover = {};
+  state.coverActive = false;
   document.getElementById('modalOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
   const mc = document.getElementById('modalContent');
@@ -1047,7 +1101,7 @@ async function openModal(job) {
 
     mc.innerHTML = `
       <h2>${esc(job.title)}</h2>
-      <div class="job-meta-line">${esc(job.company)} • ${esc(job.location)} • ${esc(job.source)} ${job.salary ? '• ' + esc(job.salary) : ''}</div>
+      <div class="job-meta-line">${esc(job.company)} • ${esc(job.location)} • ${esc(job.source)} ${job.salary ? '• ' + esc(job.salary) : ''} • ${fakeBadge(job)}</div>
       <div class="modal-section" style="text-align:center">
         <div class="ring-wrap">
           <svg class="progress-ring" width="110" height="110" viewBox="0 0 110 110">
@@ -1065,9 +1119,20 @@ async function openModal(job) {
         <div class="hr-tabs">
           <div class="hr-tab active" onclick="showHrTab('en',this)">English</div>
           <div class="hr-tab" onclick="showHrTab('ar',this)">عربي</div>
+          <div class="hr-tab" onclick="showCoverTab(this)">✉️ ${tr.job.coverLetter}</div>
         </div>
         <div class="hr-content" id="hrContent">${esc(d.hr_en)}</div>
         <button class="btn btn-accent2 btn-sm" style="margin-top:var(--s2)" onclick="copyHr()">${tr.job.copy}</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleSimplifyEditor()">📤 لـ Simplify.jobs</button>
+      </div>
+      <div class="modal-section" id="simplifySection" style="display:${state.showSimplifyEdit ? 'block' : 'none'}">
+        <h3>📤 الرسالة المخصصة لـ Simplify.jobs</h3>
+        <textarea id="simplifyMsgEditor" rows="7" class="btn btn-wide" style="width:100%;background:var(--bg-card);color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:inherit;font-size:.8rem;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-accent2 btn-sm" onclick="fillSimplifyEditor()">✏️ تحرير الرسالة</button>
+          <button class="btn btn-accent2 btn-sm" onclick="copySimplifyMsg()">📤 نسخ لـ Simplify.jobs</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleSimplifyEditor()">✕ إغلاق</button>
+        </div>
       </div>
       <div class="modal-section" id="vetSection">
         <h3>🏢 فحص الشركة وملف التقديم</h3>
@@ -1091,9 +1156,12 @@ async function openModal(job) {
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-accent2 btn-sm" onclick="prepareApplication()">📋 جهز التقديم وافتح الصفحة</button>
           <button class="btn btn-sm" onclick="mailApplication()">✉️ إرسال بالبريد</button>
+          <button class="btn btn-sm" onclick="printReport()">🖨️ طباعة التقرير</button>
+          <button class="btn btn-primary btn-sm" onclick="openApplyGuide()">🧭 ${state.lang === 'ar' ? 'مساعد التقديم خطوة بخطوة' : 'Step-by-step apply assistant'}</button>
           <button class="btn btn-sm" onclick="markApplied(state.modalJob)">✅ سجل أنك قدمت</button>
         </div>
         <div style="color:var(--muted);font-size:.8rem;margin-top:6px">التجهيز ينسخ الرسالة ويفتح صفحة الشركة — أنت تراجع وترسل بنفسك ثم تسجل</div>
+        <div id="guideBox" style="margin-top:8px"></div>
       </div>`;
 
     loadCompanyVet(job);
@@ -1112,6 +1180,7 @@ async function openModal(job) {
 function showHrTab(lang, el) {
   document.querySelectorAll('.hr-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  state.modalHrLang = lang;
   const content = lang === 'en' ? state.modalHrEn : state.modalHrAr;
   document.getElementById('hrContent').textContent = content;
   document.getElementById('hrContent').style.direction = lang === 'en' ? 'ltr' : 'rtl';
@@ -1518,8 +1587,68 @@ function renderSettingsPage() {
         <button class="btn" onclick="exportData('csv')">📄 ${tr.settings.exportCSV}</button>
         <button class="btn" onclick="exportData('json')">📋 ${tr.settings.exportJSON}</button>
       </div>
+    </div>
+    <div class="card" style="margin-top:var(--s4)">
+      <div class="card-title">📝 بيانات التعبئة التلقائية <span style="font-weight:400;font-size:.75rem;color:var(--text-muted)">(تُحفظ في متصفحك فقط)</span></div>
+      <div style="display:grid;gap:8px;margin-top:8px">
+        <input id="afName" class="btn btn-wide" style="text-align:start" placeholder="الاسم / Name — [Your Name]">
+        <input id="afEmail" class="btn btn-wide" style="text-align:start" dir="ltr" placeholder="Email — [Email]">
+        <input id="afPhone" class="btn btn-wide" style="text-align:start" dir="ltr" placeholder="Phone — [Phone]">
+        <input id="afLink" class="btn btn-wide" style="text-align:start" dir="ltr" placeholder="LinkedIn URL">
+      </div>
+      <div class="btn-group" style="margin-top:var(--s3)">
+        <button class="btn" onclick="saveAutofillProfile()">💾 حفظ بياناتي</button>
+        <button class="btn" onclick="copyAutofillBookmarklet()">🔖 نسخ بوكماركلت التعبئة</button>
+      </div>
+      <div style="color:var(--text-muted);font-size:.78rem;margin-top:6px">البوكماركلت يملأ حقول رسالة التقديم في مواقع ATS (Greenhouse/Ashby/Lever) ببياناتك — اسحبه لشريط المتصفح واستخدمه هناك. أنت تراجع وتضغط إرسال بنفسك.</div>
+    </div>
+    <div class="card" style="margin-top:var(--s4)">
+      <div class="card-title">🧪 مختبر تجريبي <span style="font-weight:400;font-size:.75rem;color:var(--text-muted)">(قيد التطوير — تعمل جزئيًا)</span></div>
+      <div style="display:grid;gap:6px;font-size:.85rem;margin-top:8px">
+        <div>🎤 تحضير المقابلات — <b style="color:var(--success)">يعمل جزئيًا</b>: مختبر HR يولّد أسئلة متوقعة بإجابات عامة. <button class="btn btn-sm" onclick="navigate('jobs')">جرّبه</button></div>
+        <div>📄 ملف PDF للسيرة — <b style="color:var(--warning)">قريبًا</b>: حاليًا استخدم طباعة المتصفح (Ctrl+P) من أي تقرير.</div>
+        <div>🎨 التعلّم من أسلوبك (Mirror) — <b style="color:var(--warning)">يحتاج طبقة AI</b>: تُبنى بعد ربط نموذج لغوي.</div>
+        <div>📧 Gmail + Telegram — <b style="color:var(--text-muted)">محلي فقط</b>: يعمل على جهازك الخاص، ولا يدخل النسخة العامة أبدًا.</div>
+      </div>
     </div>`;
+  fillAutofillInputs();
 }
+
+// ─── Autofill profile + bookmarklet (بيانات الزائر فقط، localStorage) ──
+function getAutofill() {
+  try { return JSON.parse(localStorage.getItem('sjm-autofill') || '{}'); }
+  catch (e) { return {}; }
+}
+function fillAutofillInputs() {
+  const p = getAutofill();
+  const m = { afName: p.name || '', afEmail: p.email || '', afPhone: p.phone || '', afLink: p.linkedin || '' };
+  for (const [id, v] of Object.entries(m)) {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = v;
+  }
+}
+function saveAutofillProfile() {
+  const p = {
+    name: document.getElementById('afName')?.value?.trim() || '',
+    email: document.getElementById('afEmail')?.value?.trim() || '',
+    phone: document.getElementById('afPhone')?.value?.trim() || '',
+    linkedin: document.getElementById('afLink')?.value?.trim() || '',
+  };
+  try { localStorage.setItem('sjm-autofill', JSON.stringify(p)); } catch (e) {}
+  toast(state.lang === 'ar' ? '💾 حُفظت بيانات التعبئة في متصفحك' : '💾 Autofill profile saved');
+}
+function copyAutofillBookmarklet() {
+  const p = getAutofill();
+  const sig = [p.name || '[Your Name]', p.phone || '[Phone]', p.email || '[Email]', p.linkedin || '[LinkedIn]'].join(' | ');
+  const msg = ('Dear Hiring Manager,\\n\\nI am writing to apply for this position. '
+    + '[أضف مهاراتك المرتبطة بالدور من خبرتك]\\n\\nBest regards,\\n' + sig)
+    .replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const js = "javascript:(function(){var m='" + msg + "';var sels=['textarea[name=\"message\"]','textarea[name=\"coverLetter\"]','textarea[name=\"cover_letter\"]','textarea[name=\"letter\"]','textarea[name=\"note\"]'];var t=null;for(var i=0;i<sels.length;i++){t=document.querySelector(sels[i]);if(t)break;}if(!t)t=document.querySelector('textarea');if(!t){alert('No message field found');return;}t.focus();t.value=m;t.select();try{document.execCommand('copy');}catch(e){}alert('Message filled — review and submit yourself');})();";
+  navigator.clipboard.writeText(js)
+    .then(() => toast(state.lang === 'ar' ? '🔖 نُسخ البوكماركلت — الصقه كرابط في شريط المتصفح' : '🔖 Bookmarklet copied'))
+    .catch(() => toast(t().job.copyFail, 'err'));
+}
+function printReport() { window.print(); }
 
 function exportData(format) {
   const jobs = state.allJobs;
@@ -1599,6 +1728,8 @@ async function renderApplicationsPage() {
   const box = document.getElementById('myappsContent');
   if (!box) return;
   box.innerHTML = `<div style="color:var(--muted)">${t().loading}</div>`;
+  ensureFollowups();
+  renderApplyCenter();
   try {
     const d = await api('/api/v1/applications');
     const items = d.items || [];
@@ -1624,6 +1755,905 @@ async function updateApplicationStatus(jobId, status) {
     await api('/api/v1/applications/' + encodeURIComponent(jobId), {method: 'PATCH', body: JSON.stringify({status})});
     toast(state.lang === 'ar' ? 'حُدّثت الحالة ✓' : 'Status updated ✓');
   } catch (e) { toast(t().error, 'err'); }
+}
+
+// ─── Application Center + HR Lab + Daily + Followups (sanitized port) ──
+// Skills from visitor wizard input only; signatures use placeholders.
+// ─── Salary utils (USD/month) — approximate FX for ranking only ──────────
+const SALARY_FX = { PHP:0.0178, HUF:0.0028, CZK:0.043, PLN:0.25, INR:0.012, BRL:0.185, MXN:0.055,
+  SGD:0.75, CAD:0.73, AUD:0.66, GBP:1.27, EUR:1.08, CHF:1.10, SEK:0.095, NOK:0.093, DKK:0.145,
+  ZAR:0.055, ILS:0.27, JPY:0.0067, TRY:0.03, SAR:0.267, AED:0.272, QAR:0.275, KWD:3.26,
+  BHD:2.65, OMR:2.60, EGP:0.0208, RON:0.215 };
+
+// ─── Application Center port — sanitized (no personal data) ─────────────
+// Skills come from the visitor's wizard input only. Signatures use placeholders.
+
+// Skills entered by the visitor (wizard) — the ONLY personalization source here.
+function wizardSkills() {
+  return ((state.wizardData && state.wizardData.skills) || '').trim();
+}
+
+function buildApplyMsg(job) {
+  const t = (job && job.title) || '';
+  const c = (job && job.company) || 'your company';
+  const matched = ((job && job.analysis && job.analysis.matched) || [])
+    .map(m => m.category).filter(Boolean).join(', ');
+  const skills = matched || wizardSkills();
+  const skillLine = skills
+    ? ('Relevant skills: ' + skills)
+    : '[أضف 2-3 مهارات مرتبطة بهذا الدور من خبرتك الحقيقية]';
+  return `Subject: Application for ${t} — [Your Name]
+
+Dear Hiring Manager,
+
+I am writing to apply for the ${t} position at ${c}. ${skillLine}
+
+[أضف فقرة إنجازاتك بأرقام حقيقية من عملك هنا]
+
+I would welcome the opportunity to discuss how I can contribute to your team.
+
+Best regards,
+[Your Name] | [Phone] | [Email] | [LinkedIn]`;
+}
+
+function copyApplyMsg(title, company) {
+  const msg = buildApplyMsg({ title, company });
+  navigator.clipboard.writeText(msg).then(() => toast('📋 نُسخت رسالة التقديم — الصقها في الإيميل', undefined)).catch(() => toast(t().error, 'err'));
+}
+
+function copyApplyMsgFromJob(j) { copyApplyMsg(j.title || '', j.company || ''); }
+
+// ─── Apply Center — مركز التقديم: أعلى 50 فرصة جاهزة ───────────────────
+async function renderApplyCenter() {
+  const box = document.getElementById('applyContent');
+  if (!box || box.dataset.done === '1') return;
+  try {
+    const d = await api('/api/v1/apply-top50', {
+      method: 'POST',
+      body: JSON.stringify({ skills: wizardSkills() }),
+    });
+    box.dataset.done = '1';
+    const hrMsg = (t, c) => buildApplyMsg({ title: t, company: c });
+    const section = (title, list, badge) => `
+      <h3 style="font-size:1.05rem;font-weight:800;margin:16px 0 8px">${title}</h3>
+      ${list.map((j, i) => {
+        const applied = state.appliedIds && state.appliedIds.has(String(j.job_id || j.url));
+        return `<div class="card" style="margin-bottom:10px;padding:12px">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <div style="font-weight:700;font-size:.9rem"><span class="skill-chip">${badge} #${i+1}</span> ${esc(j.title)}</div>
+            <span style="color:var(--success);font-weight:700;font-size:.8rem;white-space:nowrap">${j.salary || 'الراتب غير معلن'}</span>
+          </div>
+          <div style="color:var(--text-muted);font-size:.78rem;margin-top:2px">${esc(j.company)} • ${esc(j.location || 'Remote')} • تطابق ${j.score}% (قوة ${j.depth}) • ${esc(j.source)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <a class="btn-primary" href="${esc(j.url)}" target="_blank" rel="noopener" style="text-decoration:none" onclick="smartApplyApply(${JSON.stringify(j).replace(/'/g, "&#39;")}); return false;">🚀 قدّم الآن</a>
+            <button class="btn-secondary" onclick='openModalFromApply(${JSON.stringify(j).replace(/'/g, "&#39;")})'>🧰 كل مزايا التقديم</button>
+            <button class="btn-secondary" onclick='openHrLabFromApply(${JSON.stringify(j).replace(/'/g, "&#39;")})'>🧪 مختبر HR</button>
+            <button class="btn-secondary" onclick="copyApplyMsg('${esc(j.title)}','${esc(j.company)}')">📋 رسالة HR</button>
+            <button class="btn-secondary" onclick='copyToSimplify(${JSON.stringify(j).replace(/'/g, "&#39;")})' title="انسخ الرسالة لاستخدامها في simplify.jobs">📤 لـ Simplify.jobs</button>
+            ${applied ? '<span class="skill-chip">✅ قدمت</span>' : ''}
+          </div>
+        </div>`;
+      }).join('')}`;
+    box.innerHTML =
+      section('🤖 القسم A — ريموت بالدولار (الأقرب لتخصصك أولاً)', d.remote, 'USD') +
+      section('🇸🇦 القسم B — الخليج: مشتريات/سلاسل/مبيعات/أدوية', d.gulf, '🇸🇦') +
+      `<p style="color:var(--text-muted);font-size:.75rem;margin-top:12px">آخر تحديث للترتيب: ${esc(d.generated)}</p>`;
+    if (!state.appliedIds) loadApplied();
+  } catch (e) {
+    box.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h2>تعذر تحميل القائمة</h2><p>${esc(e.message)}</p></div>`;
+  }
+}
+
+async function openHrLab(job) {
+  closeHrLab();
+  const ov = document.createElement('div');
+  ov.id = 'hrLabOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = `<div id="hrLabBox" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border-subtle);border-radius:16px;max-width:720px;width:100%;max-height:88vh;overflow-y:auto;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h3 style="margin:0">🧪 مختبر HR — محاكاة الفرز</h3>
+      <button class="btn-secondary" onclick="closeHrLab()">✕</button>
+    </div>
+    <p style="color:var(--text-muted);font-size:.85rem">${esc(job.title)} — ${esc(job.company || '')}</p>
+    <div class="loading"><span class="spinner"></span> نحلل توافق مهاراتك ضد هذه الوظيفة...</div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov) closeHrLab(); });
+  try {
+    const d = await api('/api/v1/hr-simulate', {
+      method: 'POST',
+      body: JSON.stringify({ job_id: job.id, skills: wizardSkills() }),
+    });
+    if (d.error) throw new Error(d.error);
+    const box = document.getElementById('hrLabBox');
+    const pct = d.score || 0;
+    const color = pct >= 75 ? 'var(--success)' : pct >= 55 ? 'var(--warning)' : 'var(--danger)';
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+        <h3 style="margin:0">🧪 مختبر HR — محاكاة الفرز</h3>
+        <button class="btn-secondary" onclick="closeHrLab()">✕</button>
+      </div>
+      <p style="color:var(--text-muted);font-size:.85rem;margin:0 0 10px">${esc(d.title)} — ${esc(d.company)}</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="font-size:2rem;font-weight:800;color:${color}">${pct}%</div>
+        <div style="font-weight:700;color:${color};font-size:.9rem">${esc(d.verdict)}</div>
+      </div>
+      <div style="height:8px;background:var(--border-subtle);border-radius:6px;overflow:hidden;margin-bottom:14px">
+        <div style="height:100%;width:${pct}%;background:${color}"></div>
+      </div>
+      ${d.missing?.length ? `<b style="color:var(--danger);font-size:.85rem">ما ينقصك لهذه الوظيفة:</b>
+        <div style="margin:6px 0 12px;display:flex;gap:6px;flex-wrap:wrap">${d.missing.map(m =>
+          `<span class="tag-pill" style="border-color:var(--danger);color:var(--danger)">${esc(m.category)}: ${m.skills.slice(0,3).map(esc).join('، ')}</span>`).join('')}</div>` : ''}
+      <b style="font-size:.85rem">🎤 أسئلة الفرز المتوقعة — وإجابتك الجاهزة:</b>
+      ${d.questions.map(q => `<div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px;margin:8px 0">
+        <div style="font-weight:700;font-size:.85rem">${esc(q.q)}${q.risk ? ` <span style="color:var(--danger);font-size:.7rem">[${esc(q.risk)}]</span>` : ''}</div>
+        <div style="color:var(--text-muted);font-size:.8rem;margin-top:4px">🗣️ ${esc(q.answer)}</div>
+      </div>`).join('')}
+      ${d.feedback?.length ? `<b style="color:var(--warning);font-size:.85rem">🛠️ قبل أن تضغط تقديم:</b>
+        <ul style="font-size:.8rem;color:var(--text-muted);line-height:1.8;margin:6px 0">${d.feedback.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}
+      <a class="btn-primary" href="${esc(d.url)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;text-decoration:none">🚀 قدّم الآن</a>`;
+  } catch(e) {
+    const box = document.getElementById('hrLabBox');
+    if (box) box.innerHTML += `<p style="color:var(--danger)">تعذر التحليل: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderFollowups() {
+  const box = document.getElementById('followupsContent');
+  if (!box) return;
+  const d = state.followupsData;
+  const due = d.due || [];
+  if (!due.length) {
+    box.innerHTML = `<p style="color:var(--text-muted);font-size:.85rem;margin:0">لا متابعات مستحقة الآن${d.waiting ? ` — ${d.waiting} تقديماً في انتظار الرد (أقل من ${d.followup_days - 2} أيام)` : ''}.</p>`;
+    return;
+  }
+  box.innerHTML = due.map((a, i) => `
+    <div class="daily-item" style="animation-delay:${Math.min(i * 40, 320)}ms">
+      <div class="daily-rank" style="background:${a.overdue ? 'rgba(239,68,68,.15)' : 'rgba(245,158,11,.15)'};color:${a.overdue ? '#ef4444' : '#f59e0b'}">${a.days}ي</div>
+      <div class="daily-main">
+        <div style="font-weight:800;font-size:.92rem">${esc(a.title || a.job_id)} — ${esc(a.company || '')}</div>
+        <div style="color:var(--text-muted);font-size:.78rem;margin-top:2px">قُدّمت منذ ${a.days} يوماً ${a.overdue ? '• <span style="color:#ef4444">متأخرة — تابع اليوم</span>' : '• قريب من نافذة المتابعة'}</div>
+      </div>
+      <div class="daily-actions">
+        <a class="btn-primary" href="${esc(buildLinkedInUrl({ title: a.title, company: a.company }))}" target="_blank" rel="noopener" onclick="event.stopPropagation(); navigator.clipboard.writeText('Dear Hiring Manager, I applied for the ' + '${esc(a.title || '')}'.replace(/&amp;/g,'&') + ' position ' + ${a.days} + ' days ago and remain very interested. I would welcome an update on the timeline. Best regards, [Your Name]').catch(()=>{});">✉️ متابعة</a>
+        <a class="btn-secondary" href="${esc(a.url || '#')}" target="_blank" rel="noopener">🔗 الإعلان</a>
+      </div>
+    </div>`).join('');
+}
+
+async function ensureTop50() {
+  if (state.top50Jobs) { renderTop50(); return; }
+  if (state.top50Loading) return;
+  state.top50Loading = true;
+  try {
+    const d = await api('/api/v1/apply-top50', {
+      method: 'POST',
+      body: JSON.stringify({ skills: wizardSkills() }),
+    });
+    state.top50Jobs = [...(d.remote || []), ...(d.gulf || [])];
+    state.top50Generated = d.generated || '';
+    state.top50Loading = false;
+    renderTop50();
+    if (!state.appliedIds) loadApplied();
+  } catch (e) {
+    state.top50Loading = false;
+    const box = document.getElementById('top50Content');
+    if (box) box.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h2>تعذر تحميل أفضل 50</h2><p>${esc(e.message)}</p></div>`;
+  }
+}
+
+async function ensureDaily() {
+  if (state.dailyJobs) { renderDaily(); return; }
+  if (state.dailyLoading) return;
+  const box = document.getElementById('dailyContent');
+  state.dailyLoading = true;
+  if (box) box.innerHTML = '<div class="loading"><span class="spinner"></span> جاري تجهيز خطة اليوم...</div>';
+  try {
+    const d = await api('/api/v1/daily-queue?skills=' + encodeURIComponent(wizardSkills()));
+    state.dailyJobs = d.items || [];
+    state.dailyGenerated = d.generated || '';
+    state.dailyLoading = false;
+    renderDaily();
+    if (!state.appliedIds) loadApplied();
+  } catch (e) {
+    state.dailyLoading = false;
+    if (box) box.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h2>تعذر تحميل خطة اليوم</h2><p>${esc(e.message)}</p></div>`;
+  }
+}
+
+async function ensureFollowups() {
+  const box = document.getElementById('followupsContent');
+  if (!box) return;
+  if (state.followupsData) { renderFollowups(); return; }
+  if (state.followupsLoading) return;
+  state.followupsLoading = true;
+  box.innerHTML = '<div class="loading"><span class="spinner"></span> جاري فحص من يحتاج متابعة...</div>';
+  try {
+    const d = await api('/api/v1/followups');
+    state.followupsData = d;
+    state.followupsLoading = false;
+    renderFollowups();
+  } catch (e) {
+    state.followupsLoading = false;
+    box.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h2>تعذر تحميل المتابعات</h2><p>${esc(e.message)}</p></div>`;
+  }
+}
+
+async function showCoverTab(el) {
+  document.querySelectorAll('.hr-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  state.coverActive = true;
+  state.modalCover = state.modalCover || {};
+  const lang = state.modalHrLang || 'en';
+  const box = document.getElementById('hrContent');
+  box.style.direction = lang === 'en' ? 'ltr' : 'rtl';
+  box.style.textAlign = lang === 'en' ? 'left' : 'right';
+  if (state.modalCover[lang]) { box.textContent = state.modalCover[lang]; return; }
+  box.textContent = t().job.coverLoading;
+  try {
+    const job = state.modalJob || {};
+    const d = await api('/api/v1/cover-letter', {
+      method: 'POST',
+      body: JSON.stringify({ title: job.title || '', company: job.company || '', lang, skills: wizardSkills() }),
+    });
+    state.modalCover[lang] = d.letter || '';
+    if (state.coverActive) box.textContent = state.modalCover[lang];
+  } catch (e) { if (state.coverActive) box.textContent = t().job.copyFail; }
+}
+
+async function guideCopyCover() {
+  const lang = state.modalHrLang || 'en';
+  try {
+    state.modalCover = state.modalCover || {};
+    if (!state.modalCover[lang]) {
+      const job = state.modalJob || {};
+      const d = await api('/api/v1/cover-letter', {
+        method: 'POST',
+        body: JSON.stringify({ title: job.title || '', company: job.company || '', lang, skills: wizardSkills() }),
+      });
+      state.modalCover[lang] = d.letter || '';
+    }
+    await navigator.clipboard.writeText(state.modalCover[lang]);
+    toast(t().job.copied);
+    guideCheck(2);
+  } catch (e) { toast(t().job.copyFail, 'err'); }
+}
+
+
+// ===== _dailyJob =====
+function _dailyJob(id) {
+  return (state.dailyJobs || []).find(j => simplifyMsgKey(j) === String(id));
+}
+
+
+// ===== applyTop50State =====
+function applyTop50State() {
+  const sec = document.getElementById('top50Section');
+  if (!sec) return;
+  const open = localStorage.getItem('sjm-top50-open') !== '0'; // مفتوح افتراضياً
+  sec.classList.toggle('collapsed', !open);
+  const head = sec.querySelector('.top50-header');
+  if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) ensureTop50();
+}
+
+
+// ===== closeHrLab =====
+function closeHrLab() { document.getElementById('hrLabOverlay')?.remove(); }
+
+
+// ===== copySimplifyMsg =====
+function copySimplifyMsg() {
+  const el = document.getElementById('simplifyMsgEditor');
+  const job = state.modalJob || {};
+  const id = simplifyMsgKey(job);
+  const msg = (el?.value || '').trim() || buildApplyMsg(job);
+  if (id) localStorage.setItem('sjm-simplify-msg-' + id, msg);
+  navigator.clipboard.writeText(msg)
+    .then(() => toast('📤 نُسخت الرسالة وحُفظت — الصقها في simplify.jobs'))
+    .catch(() => toast(t().error, 'err'));
+}
+
+
+// ===== copyToSimplify =====
+function copyToSimplify(job) {
+  const id = simplifyMsgKey(job);
+  const msg = (id ? localStorage.getItem('sjm-simplify-msg-' + id) : null) || buildApplyMsg(job);
+  navigator.clipboard.writeText(msg).then(() => toast('📤 نُسخت الرسالة لـ Simplify.jobs — الصقها في حقل الرسالة')).catch(() => toast(t().error, 'err'));
+}
+
+
+// ===== dailyCopyMsg =====
+function dailyCopyMsg(id) {
+  const j = _dailyJob(id); if (!j) return;
+  // الحقل يُبنى بمعرّف مصفّى — نجد الحقل بمعرفه الفعلي
+  const ta = document.getElementById('msg_' + String(id).replace(/[^a-zA-Z0-9_]/g, '_'));
+  const text = ta ? ta.value : (j.hr_message || '');
+  navigator.clipboard.writeText(text).then(() => toast('نُسخت الرسالة ✓')).catch(() => toast(t().error, 'err'));
+}
+
+
+// ===== dailyMsgKey =====
+function dailyMsgKey(j) {
+  return 'sjm-daily-msg-' + (simplifyMsgKey(j) || 'no-id');
+}
+
+
+// ===== dailyResetMsg =====
+function dailyResetMsg(id) {
+  localStorage.removeItem('sjm-daily-msg-' + String(id));
+  toast('عادت الرسالة الأصلية');
+  renderDaily();
+}
+
+
+// ===== dailySaveMsg =====
+function dailySaveMsg(id) {
+  const ta = document.getElementById('msg_' + String(id).replace(/[^a-zA-Z0-9_]/g, '_'));
+  if (!ta) return;
+  localStorage.setItem('sjm-daily-msg-' + String(id), ta.value);
+  toast('حُفظ التعديل محلياً ✓ — سيُستخدم بدل الجاهزة');
+  renderDaily();
+}
+
+
+// ===== dailySmartApply =====
+async function dailySmartApply(j) {
+  // نفس منطق «قدّم الآن» الذكي + نسخ الرسالة المُعدَّلة إن وجدت
+  const saved = localStorage.getItem(dailyMsgKey(j));
+  const text = saved || j.hr_message || '';
+  if (text) navigator.clipboard.writeText(text).catch(() => {});
+  if (j.url && j.url !== '#') window.open(j.url, '_blank', 'noopener');
+  try {
+    await markApplied({ id: j.job_id, title: j.title, company: j.company, url: j.url });
+  } catch (e) { /* التسجيل اختياري — لا يعطل الفتح */ }
+  renderDaily();
+  toast('نُسخت الرسالة وفُتح الإعلان — الصق وأرسل ثم راجع «تقديماتي»');
+}
+
+
+// ===== dailyState =====
+function dailyState() {
+  const sec = document.getElementById('dailySection');
+  if (!sec) return;
+  const open = localStorage.getItem('sjm-daily-open') === '1'; // مغلق افتراضياً
+  sec.classList.toggle('collapsed', !open);
+  const head = sec.querySelector('.top50-header');
+  if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) ensureDaily();
+}
+
+
+// ===== fillSimplifyEditor =====
+function fillSimplifyEditor() {
+  const el = document.getElementById('simplifyMsgEditor');
+  if (!el) return;
+  const job = state.modalJob || {};
+  const id = simplifyMsgKey(job);
+  const saved = id ? localStorage.getItem('sjm-simplify-msg-' + id) : null;
+  el.value = saved || document.getElementById('hrContent')?.textContent || buildApplyMsg(job);
+}
+
+
+// ===== guideCheck =====
+function guideCheck(n) {
+  const s = guideState();
+  s['s' + n] = true;
+  guideSave(s);
+  renderApplyGuide();
+  if (n === 4 && state.modalJob) markApplied(state.modalJob);
+}
+
+
+// ===== guideCopyHr =====
+function guideCopyHr() {
+  const tx = document.getElementById('hrContent')?.textContent || '';
+  if (!tx) return;
+  navigator.clipboard.writeText(tx)
+    .then(() => { toast(t().job.copied); guideCheck(2); })
+    .catch(() => toast(t().job.copyFail, 'err'));
+}
+
+
+// ===== guideKey =====
+function guideKey() {
+  const j = state.modalJob || {};
+  return 'applyGuide_' + String(j.id || j.url || 'x');
+}
+
+
+// ===== guideOpenPage =====
+function guideOpenPage() {
+  const job = state.modalJob || {};
+  if (job.url && job.url !== '#') window.open(job.url, '_blank', 'noopener');
+}
+
+
+// ===== guideReset =====
+function guideReset() {
+  try { localStorage.removeItem(guideKey()); } catch (e) {}
+  renderApplyGuide();
+}
+
+
+// ===== guideSave =====
+function guideSave(s) {
+  try { localStorage.setItem(guideKey(), JSON.stringify(s)); } catch (e) {}
+}
+
+
+// ===== guideState =====
+function guideState() {
+  try { return JSON.parse(localStorage.getItem(guideKey()) || '{}'); }
+  catch (e) { return {}; }
+}
+
+
+// ===== jobUsdPerMonth =====
+function jobUsdPerMonth(j) {
+  const usd = parseJobSalaryUsd(j.salary);
+  return usd ? usd / 12 : null;
+}
+
+
+// ===== loadMoreTop50 =====
+function loadMoreTop50() {
+  state.top50Shown += state.top50Step;
+  renderTop50();
+}
+
+
+// ===== markAppliedApply =====
+async function markAppliedApply(jobId, el) {
+  const job = { id: jobId, title: el.dataset.title, company: el.dataset.company, url: el.dataset.url };
+  try {
+    await api('/api/v1/applications', {
+      method: 'POST',
+      body: JSON.stringify({ job_id: String(job.id), title: job.title || '', company: job.company || '', url: job.url || '' }),
+    });
+    state.appliedIds = state.appliedIds || new Set();
+    state.appliedIds.add(String(job.id));
+    toast('🚀 سُجّل التقديم في تقديماتي — وفّق الله', undefined);
+  } catch (e) { toast(t().error, 'err'); }
+}
+
+
+// ===== openApplyGuide =====
+function openApplyGuide() {
+  renderApplyGuide();
+  const g = document.getElementById('guideBox');
+  if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+// ===== openHrLabFromApply =====
+function openHrLabFromApply(j) {
+  openHrLab({ id: j.job_id || j.url, title: j.title, company: j.company, url: j.url, location: j.location, source: j.source });
+}
+
+
+// ===== openModalFromApply =====
+function openModalFromApply(j) {
+  openModal({ id: j.job_id || j.url, title: j.title, company: j.company, url: j.url, location: j.location, source: j.source, salary: j.salary_raw });
+}
+
+
+// ===== openSimplifyEditor =====
+function openSimplifyEditor(j) {
+  const id = simplifyMsgKey(j);
+  const existing = id ? localStorage.getItem('sjm-simplify-msg-' + id) : null;
+  const msg = existing || buildApplyMsg(j);
+  if (state.simplifyEditor) { state.simplifyEditor.close(); }
+  state.simplifyEditor = window.open('', '_blank', 'width=680,height=620,menubar=no,toolbar=no,scrollbars=yes');
+  state.simplifyEditor.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>رسالة Simplify.jobs — ${esc(j.title || 'وظيفة')}</title>
+<style>
+  body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0b1120;color:#e2e8f0;padding:24px;max-width:620px;margin:0 auto;direction:rtl}
+  h3{font-size:1.1rem;margin-bottom:8px}
+  textarea{width:100%;height:260px;background:#111827;color:#e2e8f0;border:1px solid #374151;border-radius:8px;padding:10px;font:inherit;font-size:.85rem;resize:vertical;direction:rtl}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#1e293b;color:#e2e8f0;cursor:pointer;font:inherit;font-size:.85rem}
+  button.primary{background:#c6a664;color:#0b0f14;border-color:#c6a664;font-weight:700}
+  .hint{font-size:.78rem;color:#94a3b8;margin-top:8px;line-height:1.5}
+</style></head><body>
+  <h3>✏️ الرسالة المخصصة لـ Simplify.jobs</h3>
+  <textarea id="msg">${esc(msg)}</textarea>
+  <div class="row">
+    <button class="primary" onclick="saveAndClose()">💾 حفظ + نسخ لـ Simplify.jobs</button>
+    <button onclick="window.close()">✕ إغلاق</button>
+  </div>
+  <div class="hint">تُحفظ تلقائياً في البرنامج — اضغط «نسخ لـ Simplify.jobs» ثم الصقها في حقل الرسالة (cover letter / message) في simplify.jobs وقم بالارسال.</div>
+  <script>
+    var msgEl = document.getElementById('msg');
+    function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    window.saveAndClose = function(){localStorage.setItem('sjm-simplify-msg-${esc(String(j.job_id||j.url))}', msgEl.value); try{navigator.clipboard.writeText(msgEl.value);}catch(e){}
+      window.close();};
+  </script>
+</body></html>`);
+  state.simplifyEditor.document.close();
+}
+
+
+// ===== parseJobSalaryUsd =====
+function parseJobSalaryUsd(raw) {
+  if (!raw) return null;
+  const s = String(raw).toUpperCase();
+  const nums = s.replace(/,/g, '').match(/\d+(\.\d+)?/g);
+  if (!nums) return null;
+  let annual = Math.max(...nums.map(Number).filter(n => n > 0));
+  if (!annual) return null;
+  if (/HOUR|\/HR/.test(s)) annual *= 2080;
+  else if (/MONTH|\/MO\b/.test(s)) annual *= 12;
+  const cur = s.match(/\b(PHP|HUF|CZK|PLN|INR|BRL|MXN|SGD|CAD|AUD|GBP|EUR|CHF|SEK|NOK|DKK|ZAR|ILS|JPY|TRY|SAR|AED|QAR|KWD|BHD|OMR|EGP|RON)\b/);
+  if (cur) return annual * SALARY_FX[cur[1]];
+  if (annual > 400000) return null; // عملة غير معرّفة بأرقام ضخمة — لا نفترض دولاراً
+  return annual;
+}
+
+
+// ===== renderApplyGuide =====
+function renderApplyGuide() {
+  const box = document.getElementById('guideBox');
+  if (!box) return;
+  const ar = state.lang === 'ar';
+  const s = guideState();
+  const done = [1, 2, 3, 4].filter(n => s['s' + n]).length;
+  const step = (n, icon, title, desc, btns) => `
+    <div class="gap-item" style="${s['s' + n] ? 'opacity:.75' : ''}">
+      <div class="info">
+        <div class="category">${s['s' + n] ? '✅' : icon} ${title}</div>
+        <div class="advice">${desc}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${btns}</div>
+      </div>
+    </div>`;
+  const btn = (fn, label) => `<button class="btn btn-sm" onclick="${fn}">${label}</button>`;
+  box.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--bg-card)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b>🧭 ${ar ? 'مساعد التقديم — خطوة بخطوة حتى النهاية' : 'Apply assistant — step by step to the end'}</b>
+        <span style="font-size:.8rem;color:var(--muted)">${done}/4 <a href="javascript:void(0)" onclick="guideReset()" style="color:var(--muted)">⟲</a></span>
+      </div>
+      <div style="height:6px;border-radius:99px;background:var(--border);margin-bottom:8px;overflow:hidden">
+        <div style="height:100%;width:${done * 25}%;background:var(--accent);transition:width .3s"></div>
+      </div>
+      ${step(1, '1️⃣', ar ? 'راجع التطابق والفجوات' : 'Review match & gaps',
+        ar ? 'انظر لنسبة الحلقة ومهاراتك المطابقة والناقصة بالأعلى' : 'Check the ring score, matched and missing skills above',
+        btn('guideCheck(1)', ar ? 'راجعت ✓' : 'Reviewed ✓'))}
+      ${step(2, '2️⃣', ar ? 'انسخ خطابك' : 'Copy your letter',
+        ar ? 'اختر رسالة HR أو خطاب التغطية الكامل' : 'Pick the HR message or the full cover letter',
+        btn('guideCopyHr()', ar ? 'نسخ HR' : 'Copy HR') + btn('guideCopyCover()', ar ? 'نسخ التغطية' : 'Copy cover'))}
+      ${step(3, '3️⃣', ar ? 'قدّم فعليا في صفحة الشركة' : 'Apply for real on the company page',
+        ar ? 'الصق بياناتك وأرسل الطلب بنفسك في الموقع الأصلي' : 'Paste your details and submit on the original site yourself',
+        btn('guideOpenPage()', ar ? 'فتح الصفحة' : 'Open page') + btn('guideCheck(3)', ar ? 'قدمت فعليا ✓' : 'Applied ✓'))}
+      ${step(4, '4️⃣', ar ? 'سجّل تقديمك هنا' : 'Record your application here',
+        ar ? 'آخر خطوة — يحفظها في قائمة تقديماتي' : 'Final step — saves it to My applications',
+        btn('guideCheck(4)', ar ? 'سجّل ✓' : 'Record ✓'))}
+      ${done === 4 ? `<div style="text-align:center;margin-top:8px;font-weight:800">🎉 ${ar ? 'اكتمل التقديم — بالتوفيق!' : 'Application complete — good luck!'}</div>` : ''}
+    </div>`;
+}
+
+
+// ===== renderDaily =====
+function renderDaily() {
+  const box = document.getElementById('dailyContent');
+  const sub = document.getElementById('dailySub');
+  if (!box) return;
+  if (sub) {
+    const done = (state.dailyJobs || []).filter(j => state.appliedIds && state.appliedIds.has(String(j.job_id))).length;
+    sub.textContent = `${state.dailyJobs.length} وظائف جاهزة — أنجزت اليوم ${done} — آخر تحديث ${state.dailyGenerated || ''}`;
+  }
+  if (!state.dailyJobs.length) {
+    box.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;margin:0">🎉 كل فرص «أفضل 50» قُدّمت — شغّل المونيتور أو انتظر تحديث القائمة.</p>';
+    return;
+  }
+  box.innerHTML = state.dailyJobs.map((j, i) => {
+    const applied = state.appliedIds && state.appliedIds.has(String(j.job_id));
+    const saved = localStorage.getItem(dailyMsgKey(j)) || '';
+    const mkey = simplifyMsgKey(j) || 'no-id';
+    const method = j.apply_method === 'linkedin' ? '💼 لينكدإن Easy Apply' : j.apply_method === 'mailto' ? '📧 إيميل مباشر' : '🌐 رابط مباشر';
+    return `
+    <div class="daily-item" style="animation-delay:${Math.min(i * 40, 320)}ms">
+      <div class="daily-rank">${i + 1}</div>
+      <div class="daily-main">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:800;font-size:.92rem;color:var(--text-primary)">${esc(j.title)}</span>
+          <span class="skill-chip">تطابق ${j.score || 0}%</span>
+          ${applied ? '<span class="skill-chip" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:#34d399">✅ قدمت</span>' : ''}
+        </div>
+        <div style="color:var(--text-muted);font-size:.78rem;margin-top:2px">${esc(j.company || '')} • ${esc(j.location || 'Remote')} • ${esc(j.salary || 'الراتب غير معلن')} • ${method}</div>
+        <details class="daily-qa">
+          <summary>💬 إجابات أسئلة الفرز الجاهزة (${(j.screen_qa || []).length})</summary>
+          ${(j.screen_qa || []).map(q => `<div style="margin:6px 0;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-card)">
+            <div style="font-size:.8rem;font-weight:700">${esc(q.q)} ${q.risk ? `<span style="color:var(--danger,#ef4444);font-size:.72rem">⚠ ${esc(q.risk)}</span>` : ''}</div>
+            <div style="font-size:.8rem;color:var(--text-secondary);margin-top:3px">✍️ ${esc(q.answer)}</div>
+          </div>`).join('')}
+        </details>
+        <details class="daily-qa">
+          <summary>📋 رسالة HR — ${saved ? 'مُعدَّلة (محفوظة محلياً)' : 'جاهزة للنسخ'} <span style="font-weight:400;opacity:.7">— اضغط للتعديل</span></summary>
+          <textarea class="daily-msg" id="msg_${esc(mkey).replace(/[^a-zA-Z0-9_]/g, '_')}" rows="4">${esc(saved || j.hr_message || '')}</textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            <button class="btn-secondary" onclick="dailyCopyMsg('${esc(mkey)}')">📋 نسخ</button>
+            <button class="btn-secondary" onclick="dailySaveMsg('${esc(mkey)}')">💾 حفظ التعديل</button>
+            <button class="btn-secondary" onclick="dailyResetMsg('${esc(mkey)}')">↺ الأصلية</button>
+          </div>
+        </details>
+      </div>
+      <div class="daily-actions">
+        <a class="btn-primary" href="${esc(j.url || '#')}" target="_blank" rel="noopener" onclick="event.stopPropagation(); dailySmartApply(${JSON.stringify(j).replace(/'/g, '&#39;')}); return false;" title="نسخ الرسالة + فتح الإعلان + التسجيل">🚀 قدّم الآن</a>
+        <button class="btn-secondary" onclick='openModalFromApply(${JSON.stringify(j).replace(/'/g, "&#39;")})'>🧰 مزايا كاملة</button>
+        <button class="btn-secondary" onclick='openHrLabFromApply(${JSON.stringify(j).replace(/'/g, "&#39;")})'>🧪 مختبر HR</button>
+        <a class="btn-secondary" href="${esc(buildLinkedInUrl(j))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💼 لينكدإن</a>
+        <button class="btn-secondary" onclick='openSimplifyEditor(${JSON.stringify(j).replace(/'/g, "&#39;")})' title="رسالة مخصصة لـ Simplify.jobs (تُحفظ تلقائياً)">📤 لـ Simplify.jobs</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+// ===== renderTop50 =====
+function renderTop50() {
+  const sec = document.getElementById('top50Section');
+  const box = document.getElementById('top50Content');
+  if (!sec || !box || sec.classList.contains('collapsed')) return;
+  if (!state.top50Jobs) return;
+  const passed = state.top50Jobs.map(top50Probe).filter(top50Pass);
+  const ordered = top50Ordered(passed);
+  if (!ordered.length) {
+    box.innerHTML = `<p style="color:var(--text-muted);font-size:.85rem;margin:0">لا فرصة من «أفضل 50» تطابق الفلاتر الحالية — خفّف الفلاتر أو أعد ضبط الحد الأدنى للراتب.</p>`;
+    return;
+  }
+  const shown = ordered.slice(0, state.top50Shown);
+  const more = ordered.length > shown.length;
+  box.innerHTML = `
+    <div class="jobs-grid" id="top50Grid" role="list" aria-label="أفضل 50 فرصة">${shown.map(top50Card).join('')}</div>
+    <div class="top50-footer">
+      <span class="top50-counter">عرض ${shown.length} من ${ordered.length} من «أفضل 50»${state.top50Generated ? ' — آخر تحديث للترتيب: ' + esc(state.top50Generated) : ''}</span>
+      ${more ? `<button type="button" class="btn-secondary" onclick="loadMoreTop50()">تحميل المزيد (+${state.top50Step})</button>` : ''}
+    </div>`;
+}
+
+
+// ===== scrollToTop =====
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+
+// ===== simplifyMsgKey =====
+function simplifyMsgKey(job) {
+  const j = job || {};
+  const key = j.job_id || j.id || j.url;
+  return key ? String(key) : null;
+}
+
+
+// ===== smartApplyApply =====
+function smartApplyApply(j) {
+  copyApplyMsg(j.title, j.company);
+  if (j.url && j.url !== '#') window.open(j.url, '_blank', 'noopener');
+  markAppliedApply(String(j.job_id || j.url), { dataset: { title: j.title || '', company: j.company || '', url: j.url || '' } });
+  openModal({ id: j.job_id || j.url, title: j.title, company: j.company, url: j.url, location: j.location, source: j.source, salary: j.salary_raw });
+}
+
+
+// ===== toggleDaily =====
+function toggleDaily() {
+  const sec = document.getElementById('dailySection');
+  if (!sec) return;
+  const open = !sec.classList.toggle('collapsed');
+  localStorage.setItem('sjm-daily-open', open ? '1' : '0');
+  const head = sec.querySelector('.top50-header');
+  if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) ensureDaily();
+}
+
+
+// ===== toggleSimplifyEditor =====
+function toggleSimplifyEditor() {
+  state.showSimplifyEdit = !state.showSimplifyEdit;
+  const sec = document.getElementById('simplifySection');
+  if (sec) sec.style.display = state.showSimplifyEdit ? 'block' : 'none';
+  if (state.showSimplifyEdit) fillSimplifyEditor();
+}
+
+
+// ===== toggleTop50 =====
+function toggleTop50() {
+  const sec = document.getElementById('top50Section');
+  if (!sec) return;
+  const open = !sec.classList.toggle('collapsed');
+  localStorage.setItem('sjm-top50-open', open ? '1' : '0');
+  const head = sec.querySelector('.top50-header');
+  if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) ensureTop50();
+}
+
+
+// ===== top50Analysis =====
+function top50Analysis(j) {
+  if (j.analysis && (j.analysis.score || (j.analysis.matched || []).length)) return j.analysis;
+  const all = state.allJobs || [];
+  const hit = all.find(x => String(x.id) === String(j.id || j.job_id)) ||
+              all.find(x => j.url && x.url === j.url);
+  return (hit && hit.analysis) || { score: j.score || 0, matched: [] };
+}
+
+
+// ===== top50Card =====
+function top50Card(j, idx) {
+  const a = top50Analysis(j);
+  const sc = a.score || 0;
+  const matchClass = sc > 50 ? 'match-high' : sc >= 25 ? 'match-mid' : 'match-low';
+  const initials = (j.company || j.title || 'SJ').substring(0, 2).toUpperCase();
+  const loc = (j.location || '').toLowerCase();
+  const isRemote = loc.includes('remote') || (j.title || '').toLowerCase().includes('remote');
+  const matchedSkills = (a.matched || []).slice(0, 3).map(m =>
+    `<span class="skill-match-tag">✓ ${esc(m.category)}</span>`).join('');
+  const applied = state.appliedIds && state.appliedIds.has(String(j.id || j.job_id || j.url));
+  const applyType = getApplyType(j);
+  const mini = { id: j.id || j.job_id, job_id: j.job_id || j.id, title: j.title, company: j.company,
+    url: j.url, location: j.location, source: j.source, salary: j.salary, salary_raw: j.salary_raw };
+  const js = JSON.stringify(mini).replace(/'/g, '&#39;');
+  return `
+  <div class="job-card" style="animation-delay:${Math.min(idx * 30, 300)}ms" onclick='openModal(${js})'>
+    <div class="job-card-top">
+      <div class="job-company-avatar">${esc(initials)}</div>
+      <div class="job-meta-primary">
+        <div class="job-title">${esc(j.title)}</div>
+        <div class="job-company">${esc(j.company || 'Enterprise Partner')} • ${esc(j.source)}</div>
+      </div>
+      <div class="match-radial ${matchClass}"><span>${sc}%</span></div>
+    </div>
+    <div class="job-tags-row">
+      ${isRemote ? '<span class="tag-pill tag-remote">🌐 Remote</span>' : '<span class="tag-pill">🏢 ' + esc(j.location || 'Onsite') + '</span>'}
+      ${(j.salary_display || j.salary) ? '<span class="tag-pill tag-salary">💰 ' + esc(j.salary_display || j.salary) + '</span>' : ''}
+      <span class="tag-pill">⭐ #${idx + 1}</span>
+    </div>
+    <div class="skills-list">
+      ${matchedSkills || '<span style="font-size:0.75rem; color:var(--text-muted)">تحليل المهارات متوفر</span>'}
+    </div>
+    <div class="job-card-actions" style="flex-wrap:wrap; gap:6px">
+      <button class="btn-secondary" onclick='event.stopPropagation(); openModal(${js})'>🔍 التفاصيل</button>
+      <button class="btn-secondary" onclick='event.stopPropagation(); openHrLabFromApply(${js})' title="محاكاة فرز ATS ومسؤول HR ضد سيرتك">🧪 مختبر HR</button>
+      <button class="btn-secondary" onclick='event.stopPropagation(); openModalFromApply(${js})'>🧰 كل مزايا التقديم</button>
+      <button class="btn-secondary" onclick='event.stopPropagation(); copyApplyMsgFromJob(${js})'>📋 رسالة HR</button>
+      <button class="btn-secondary" onclick='event.stopPropagation(); openSimplifyEditor(${js})' title="تحرير الرسالة المخصصة لـ Simplify.jobs (تُحفظ تلقائياً)">✏️ رسالة مخصصة لـ Simplify.jobs</button>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; align-items:center">
+      <a class="btn-primary" href="${esc(j.url)}" target="_blank" rel="noopener" title="قدّم الآن: نسخ الرسالة + فتح الإعلان + التسجيل + النافذة الكاملة"
+         onclick='event.stopPropagation(); smartApplyApply(${js}); return false;'>🚀 قدّم الآن</a>
+      <a class="btn-secondary" href="${esc(buildLinkedInUrl(j))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="قدّم عبر LinkedIn بحسابك الحالي — Easy Apply مجاني">💼 لينكدإن</a>
+      <button class="btn-secondary" onclick='event.stopPropagation(); openSimplifyEditor(${JSON.stringify(j).replace(/'/g, "&#39;")})' title="رسالة مخصصة لـ Simplify.jobs (تُحفظ تلقائياً)">📤 لـ Simplify.jobs</button>
+    </div>
+    <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap">
+      <span class="tag-pill" style="font-size:.72rem; background:${applyType === 'free' ? 'rgba(16,185,129,.12)' : applyType === 'linkedin' ? 'rgba(14,165,233,.12)' : 'rgba(245,158,11,.12)'}; border-color:${applyType === 'free' ? 'rgba(16,185,129,.25)' : applyType === 'linkedin' ? 'rgba(14,165,233,.25)' : 'rgba(245,158,11,.25)'}">${applyType === 'free' ? '🆓 تقديم مجاني' : applyType === 'linkedin' ? '💼 Easy Apply' : '🔒 اشتراك'}</span>
+      <span class="tag-pill" style="font-size:.72rem">🔗 ${esc(j.source)}</span>
+      ${applied ? '<span class="skill-chip">✅ قدمت</span>' : ''}
+    </div>
+  </div>`;
+}
+
+
+// ===== top50Ordered =====
+function top50Ordered(list) {
+  if (!state.sortTouched) return list;
+  return sortArray(list);
+}
+
+
+// ===== top50Pass =====
+function top50Pass(j) {
+  const savedAll = state.allJobs, savedFiltered = state.filteredJobs;
+  state.allJobs = [j];
+  let ok = false;
+  try { ok = getFilteredJobs().length === 1; }
+  finally { state.allJobs = savedAll; state.filteredJobs = savedFiltered; }
+  return ok;
+}
+
+
+// ===== top50Probe =====
+function top50Probe(j) {
+  return { ...j, salary: j.salary_raw || '', salary_display: j.salary || '' };
+}
+
+
+// ─── Fake-job score (rule-based, no AI) ────────────────────────────────
+// إشارات رخيصة من بيانات البطاقة فقط. 0-1 سليمة / 2-3 تحقق / 4+ مشبوهة.
+function fakeScore(j) {
+  let s = 0;
+  const t = (j.title || ''), c = (j.company || ''), u = (j.url || '').toLowerCase();
+  if (!c.trim()) s += 2;
+  if (/bit\.ly|t\.ly|tinyurl|goo\.gl|short\.link/i.test(u)) s += 2;
+  if (/^[A-Z\s!]{12,}$/.test(t) || /!{2,}/.test(t)) s += 1;
+  if (!((j.location || '').trim())) s += 1;
+  const sal = parseJobSalaryUsd(j.salary);
+  if (sal && sal / 12 > 60000) s += 2;
+  if (/telegram|whatsapp/i.test(t) && !c.trim()) s += 1;
+  return s;
+}
+function fakeBadge(j) {
+  const s = fakeScore(j || {});
+  if (s <= 1) return '<span class="tag-pill" style="border-color:var(--success);color:var(--success)">✅ تبدو سليمة</span>';
+  if (s <= 3) return '<span class="tag-pill" style="border-color:var(--warning);color:var(--warning)">⚠️ تحقق قبل التقديم</span>';
+  return '<span class="tag-pill" style="border-color:var(--danger);color:var(--danger)">🚫 مشبوهة — لا ترسل بيانات</span>';
+}
+
+// ─── Saved searches (local watchlist, no server) ─────────────────────
+function persistSavedSearches() {
+  try { localStorage.setItem('sjm-saved-searches', JSON.stringify(state.savedSearches.slice(0, 10))); } catch (e) {}
+}
+function snapshotFilters() {
+  return {
+    q: state.searchTerm || '',
+    workType: state.currentWorkType || 'all',
+    filter: state.currentFilter || 'all',
+    skills: [...(state.selectedSkills || [])],
+    sources: [...(state.selectedSources || [])],
+    sort: state.currentSort || 'score_desc',
+  };
+}
+function applySnapshot(s) {
+  state.searchTerm = s.q || '';
+  state.currentWorkType = s.workType || 'all';
+  state.currentFilter = s.filter || 'all';
+  state.selectedSkills = [...(s.skills || [])];
+  state.selectedSources = [...(s.sources || [])];
+  state.currentSort = s.sort || 'score_desc';
+  state.currentPageNum = 1;
+}
+function saveCurrentSearch() {
+  const ids = getFilteredJobs().map(j => String(j.id || j.url));
+  state.savedSearches.unshift({ ...snapshotFilters(), ts: Date.now(), seen: ids });
+  state.savedSearches = state.savedSearches.slice(0, 10);
+  persistSavedSearches();
+  renderSavedSearches();
+  toast(state.lang === 'ar' ? '💾 حُفظ البحث — سننبهك بالجديد عند فحصه' : '💾 Search saved');
+}
+function renderSavedSearches() {
+  const box = document.getElementById('savedBox');
+  if (!box) return;
+  if (!state.savedSearches.length) {
+    box.innerHTML = `<p style="color:var(--text-muted);font-size:.8rem;margin:0">لا بحوث محفوظة — طبّق فلترًا ثم احفظه لمتابعة الجديد فيه.</p>`;
+    return;
+  }
+  box.innerHTML = state.savedSearches.map((s, i) => `
+    <div class="gap-item"><div class="info">
+      <div class="category">🔖 ${esc(s.q || 'كل الوظائف')} <span style="color:var(--text-muted);font-weight:400">• ${esc((s.skills || []).join('، ') || 'بلا مهارات محددة')}</span></div>
+      <div class="advice">${new Date(s.ts).toLocaleDateString(state.lang === 'ar' ? 'ar-EG' : 'en-US')} • ${(s.seen || []).length} وظيفة شوهدت</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="checkSavedSearch(${i})">🔔 فحص الجديد</button>
+      <button class="btn btn-sm" onclick="applySavedSearch(${i})">عرض</button>
+      <button class="btn btn-sm" onclick="deleteSavedSearch(${i})">✕</button>
+    </div></div>`).join('');
+}
+function applySavedSearch(i) {
+  const s = state.savedSearches[i];
+  if (!s) return;
+  applySnapshot(s);
+  navigate('jobs');
+  renderJobs(getFilteredJobs());
+}
+function checkSavedSearch(i) {
+  const s = state.savedSearches[i];
+  if (!s) return;
+  applySnapshot(s);
+  navigate('jobs');
+  const jobs = getFilteredJobs();
+  const seen = new Set(s.seen || []);
+  const fresh = jobs.filter(j => !seen.has(String(j.id || j.url)));
+  s.seen = jobs.map(j => String(j.id || j.url));
+  s.ts = Date.now();
+  persistSavedSearches();
+  renderJobs(jobs);
+  renderSavedSearches();
+  toast((state.lang === 'ar' ? `🔔 ${fresh.length} جديدة في هذا البحث` : `🔔 ${fresh.length} new in this search`));
+}
+function deleteSavedSearch(i) {
+  state.savedSearches.splice(i, 1);
+  persistSavedSearches();
+  renderSavedSearches();
 }
 
 // ─── Utilities ─────────────────────────────────────────────────────────
@@ -1666,6 +2696,8 @@ function init() {
   initRouter();
   // loadJobs() و loadStats() تُستدعى عند الطلب (lazy) — وليس عند التحميل
   loadApplied();
+  dailyState(); // ⚡ استرجاع حالة «تقديم اليوم» + جلب كسول عند الفتح
+  applyTop50State(); // ⭐ استرجاع حالة «أفضل 50» + جلب كسول عند الفتح
 }
 
 document.addEventListener('DOMContentLoaded', init);

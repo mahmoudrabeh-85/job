@@ -49,6 +49,11 @@
           <span class="nav-label">تقديماتي</span>
           <span class="nav-indicator" aria-hidden="true"></span>
         </a>
+        <a class="nav-item" href="/cv-builder.html" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">📄</span>
+          <span class="nav-label">منشئ السيرة الذاتية</span>
+          <span class="nav-indicator" aria-hidden="true"></span>
+        </a>
         <a class="nav-item" data-page="settings" onclick="navigate('settings')" role="menuitem">
           <span class="nav-icon" aria-hidden="true">⚙️</span>
           <span class="nav-label" data-i18n="navSettings">الإعدادات</span>
@@ -153,6 +158,29 @@
           </div>
 
           <p style="color:var(--text-muted); font-size:.88rem; margin: -8px 0 10px; line-height:1.6">لوحة تحكم موحدة — 397 وظيفة مفهرسة مع متوسط توافق 87%، فلترة فورية حسب نمط العمل والمصدر والمهارة، واختيار طريقة التقديم (مجاني/لينكدإن/اشتراك). كل بطاقة توضح زرّي التقديم وشارة النوع.</p>
+          <!-- ─── ⚡ تقديم اليوم — أسهل 10 وظائف تقديماً ─── -->
+          <section id="dailySection" class="top50-section" role="region" aria-label="تقديم اليوم — أسهل الوظائف تقديماً">
+            <button type="button" class="top50-header" onclick="toggleDaily()" aria-expanded="false" aria-controls="dailyBody">
+              <span class="top50-header-title">⚡ تقديم اليوم</span>
+              <span class="top50-header-sub" id="dailySub">أسهل 10 وظائف تقديماً — رسالة جاهزة + إجابات الفرز + زر واحد لكل وظيفة</span>
+              <span class="top50-chevron" aria-hidden="true">⌃</span>
+            </button>
+            <div id="dailyBody" class="top50-body">
+              <div id="dailyContent"></div>
+            </div>
+          </section>
+
+          <!-- ─── ⭐ أفضل 50 فرصة جاهزة ─── -->
+          <section id="top50Section" class="top50-section" role="region" aria-label="أفضل 50 فرصة جاهزة">
+            <button type="button" class="top50-header" onclick="toggleTop50()" aria-expanded="true" aria-controls="top50Body">
+              <span class="top50-header-title">⭐ أفضل 50 فرصة جاهزة</span>
+              <span class="top50-header-sub">25 ريموت بالدولار + 25 خليجية — مرتبة بعمق تطابق مهاراتك ثم الراتب</span>
+              <span class="top50-chevron" aria-hidden="true">⌃</span>
+            </button>
+            <div id="top50Body" class="top50-body">
+              <div id="top50Content"><div class="loading"><span class="spinner"></span> جاري ترتيب أفضل 50 فرصة ضد مهاراتك...</div></div>
+            </div>
+          </section>
           <!-- Live Search Results Counter -->
           <div class="search-results-bar" id="searchResultsBar" style="display:none;" aria-live="polite">
             <span class="results-count" id="resultsCount">0</span>
@@ -385,6 +413,10 @@
         <div id="page-jobs" class="page-view" role="region" aria-label="مستكشف الوظائف">
           <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;" data-i18n="navJobs">مستكشف الوظائف</h2>
           <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">تصفح كل الوظائف المجمعة مع فلترة فورية حسب المهارة والموقع ونوع التقديم — كل بطاقة تعرض نسبة التوافق، زر <b>🆓 مجاني</b> للتقديم المباشر و <b>💼 لينكدإن</b> للتقديم بحسابك (Easy Apply مجاني)، وشارة توضح هل التقديم مجاني أم يتطلب اشتراك.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-sm" onclick="saveCurrentSearch()">💾 حفظ البحث الحالي</button>
+          </div>
+          <div id="savedBox" style="margin-bottom:14px"></div>
           <div id="jobsExplorerGrid" class="jobs-grid" role="list" aria-label="قائمة الوظائف"></div>
         </div>
 
@@ -415,6 +447,11 @@
         <div id="page-myapps" class="page-view" role="region" aria-label="تقديماتي">
           <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:6px;">📁 تقديماتي ومتابعتها</h2>
           <p style="color:var(--text-muted); font-size:.88rem; margin-bottom:14px; line-height:1.6">سجل كل وظيفة تقدمت لها بضغطة “سجل أنك قدمت” من نافذة التفاصيل — نحفظها محلياً مع تاريخ التقديم وحالة المتابعة، لتعود لها لاحقاً وتتابع الردود.</p>
+          <div id="followupsContent" style="margin-bottom:18px"></div>
+          <section id="applySection" class="top50-section" role="region" aria-label="مركز التقديم — أعلى 50 فرصة جاهزة" style="margin-bottom:18px">
+            <h2 style="font-size:1.1rem; font-weight:800; padding:12px 16px 0;">🚀 مركز التقديم — أعلى 50 فرصة جاهزة</h2>
+            <div style="padding:0 14px 14px"><div id="applyContent"><div class="loading"><span class="spinner"></span> جاري ترتيب الفرص ضد مهاراتك...</div></div></div>
+          </section>
           <div id="myappsContent"></div>
         </div>
       </div>
@@ -442,7 +479,7 @@
     <kbd>↑</kbd><kbd>↓</kbd> للتنقل بين البطاقات · <kbd>Enter</kbd> للتفاصيل · <kbd>Esc</kbd> للإغلاق
   </div>
 
-  <script src="app.js?v=match-fix2-20260927"></script>
+  <script src="app.js?v=apply-center-20261006"></script>
   <!-- Smart Multi-CV Search (independent of app.js) -->
   <script>
   (function () {

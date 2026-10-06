@@ -795,6 +795,13 @@ body::before {
   gap: 8px;
 }
 
+/* ─── Direct Employer Badge — من الشركة مباشرة ─────────────────────────── */
+.tag-direct {
+  background: rgba(217, 119, 6, 0.14);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  color: #FBBF24;
+}
+
 /* ─── Buttons ─────────────────────────────────────────────────────────── */
 .btn-primary {
   padding: 8px 16px;
@@ -1400,3 +1407,232 @@ body::before {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- Application Center sections (sanitized port) --- */
+/* ─── ⭐ أفضل 50 — قسم قابل للفتح/الإغلاق في الشاشة الرئيسية (2026-10-02) ─ */
+.top50-section {
+  margin: 4px 0 16px;
+  border: 1px solid var(--border, #263040);
+  border-radius: 14px;
+  background: var(--surface-2, #151b26);
+  overflow: hidden;
+}
+.top50-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--text-primary);
+  flex-wrap: wrap;
+  font: inherit;
+}
+.top50-header:hover { background: rgba(198, 166, 100, .06); }
+.top50-header-title { font-weight: 800; font-size: .95rem; color: var(--brand-primary, #C6A664); }
+.top50-header-sub { font-size: .78rem; color: var(--text-muted); flex: 1; min-width: 200px; }
+.top50-chevron { font-size: 1rem; transition: transform .2s ease; }
+.top50-section.collapsed .top50-chevron { transform: rotate(180deg); }
+.top50-section.collapsed .top50-body { display: none; }
+.top50-body { padding: 0 14px 14px; }
+.top50-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: var(--bg-surface, #0f172a);
+  border: 1px solid var(--border-subtle, #263040);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.top50-counter { font-size: .82rem; font-weight: 600; color: var(--text-secondary); }
+
+/* ─── ⚡ تقديم اليوم + 📬 المتابعات (2026-10-03) ── */
+.daily-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle, #263040);
+  border-radius: 12px;
+  background: var(--bg-card, #101623);
+  margin-bottom: 10px;
+  animation: cardFadeIn 0.4s var(--ease-spring) backwards;
+  flex-wrap: wrap;
+}
+.daily-rank {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: .9rem;
+  background: rgba(198, 166, 100, .12);
+  color: var(--brand-primary, #C6A664);
+}
+.daily-main { flex: 1; min-width: 260px; }
+.daily-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  align-items: stretch;
+}
+.daily-actions .btn-primary,
+.daily-actions .btn-secondary {
+  text-align: center;
+  text-decoration: none;
+  font-size: .8rem;
+  padding: 7px 10px;
+  white-space: nowrap;
+  display: block;
+}
+/* ─── مراجعة UX (2026-10-04): 10 بطاقات/يوم كانت كل بطاقة ~490px فلا يظهر أكثر من بطاقتين.
+       الحل: الرسالة تبدأ مطوية (4 أسطر قابلة للتوسيع يدوياً) والأزرار صفّ أفقي مدمج. ─── */
+.daily-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  margin-top: 4px;
+}
+.daily-actions .btn-primary,
+.daily-actions .btn-secondary {
+  display: inline-block;
+  width: auto;
+  flex: 0 1 auto;
+  padding: 6px 12px;
+  font-size: .78rem;
+}
+.daily-msg {
+  min-height: 88px;
+  max-height: 340px;
+  overflow-y: auto;
+  font-size: .76rem;
+  line-height: 1.55;
+}
+.daily-item { align-items: stretch; }
+.daily-main { flex: 1 1 100%; min-width: 0; }
+.daily-rank { align-self: flex-start; }
+  .daily-rank { flex: 0 0 42px; }
+  .daily-main { flex: 1 1 auto; min-width: 300px; }
+  .daily-actions { width: auto; margin-top: 0; }
+}
+.daily-qa { margin-top: 8px; }
+.daily-qa summary {
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--brand-primary, #C6A664);
+  user-select: none;
+}
+.daily-qa[open] summary { margin-bottom: 4px; }
+.daily-msg {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-surface, #0f172a);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle, #263040);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: .78rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+  width: 100%;
+  max-width: 420px;
+  padding: 14px;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STITCH / TalentOS skin — طبقة سمات من designs enterprise (2026-10-04)
+   تعمل فوق التوكنات الجديدة دون المساس ببنية الصفحات.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 1.elevation: حواف حادة + ظل مقصور (بطاقة enterprise) ─── */
+.job-card,
+.kpi-card,
+.daily-item,
+.modal-section,
+.skill-chip,
+.tag-pill {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+
+.job-card,
+.kpi-card,
+.daily-item {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%);
+}
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ─── 2. الأرقام والبيانات الهامة بخط أحادي المسافة (Stitch) ─── */
+.kpi-value,
+.kpi-num,
+.kpi-card .kpi-value,
+.match-score,
+.daily-rank {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.daily-rank {
+  font-size: 1rem;
+  border: 1px solid var(--brand-glow);
+  background: transparent;
+}
+
+/* ─── 3. بطاقات الوظائف: سطر meta مضغوط + عنوان أقوى ─── */
+.job-card h3,
+.daily-main span[style*="font-weight:800"] {
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+/* ─── 4. زر رئيسي واحد واضح لكل بطاقة (تسلسل مرئي) ─── */
+/* نصّ الزر = بنّي داكن على الكهرماني (كما في Stitch: on-primary #451a03)
+   لأن الأبيض على #FFC174 كان 1.6:1 فقط — فشل WCAG AA. الآن 9.9:1. */
+.btn-primary,
+.job-card .btn-primary,
+.daily-actions .btn-primary {
+  color: var(--on-brand);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 12px -2px var(--brand-glow);
+}
+  color: #FFFFFF;
+}
+
+.job-card .btn-secondary,
+.daily-actions .btn-secondary {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.job-card .btn-secondary:hover,
+.daily-actions .btn-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+  background: var(--bg-card-hover);
+}
+
+@media print { .app-sidebar, .sidebar, .topbar, .back-to-top, .btn, button, .modal-overlay .drawer-close { display: none !important; } body { background: #fff; color: #000; } }

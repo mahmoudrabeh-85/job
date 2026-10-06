@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings
-from app.routers import jobs, analysis, vet
+from app.routers import jobs, analysis, vet, refresh, cv_builder, apply
 from app.database_factory import init_db, close_pools, _BACKEND
 
 # Windows console (cp1252) cannot encode emoji/Arabic in print() and would kill
@@ -62,6 +62,9 @@ app.add_middleware(
 app.include_router(jobs.router)
 app.include_router(analysis.router)
 app.include_router(vet.router)
+app.include_router(refresh.router)
+app.include_router(cv_builder.router)
+app.include_router(apply.router)
 
 
 # ─── Health Check ────────────────────────────────────────────────────────
