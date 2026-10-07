@@ -7,43 +7,43 @@
 
 /* ─── Design Tokens ────────────────────────────────────────────────────── */
 :root {
-  /* Palette — Dark Warm Brown Lightened — بني أخف وأدفأ */
-  --bg-canvas: #2F2114;
-  --bg-surface: #3B2A17;
-  --bg-surface-elevated: #4A3520;
-  --bg-card: #40301E;
-  --bg-card-hover: #52402A;
-  --bg-glass: rgba(59, 42, 23, 0.88);
+  /* Palette — Cream Warm Light ( مطابق صور الخاصة ) */
+  --bg-canvas: #FAFAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F1F4F7;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F6F8FA;
+  --bg-glass: rgba(255, 255, 255, 0.9);
 
-  --border-subtle: rgba(255, 228, 180, 0.10);
-  --border-medium: rgba(255, 228, 180, 0.18);
-  --border-focus: #D97706;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-medium: rgba(15, 23, 42, 0.14);
+  --border-focus: #EA6A0A;
 
-  --text-primary: #FFF6E5;
-  --text-secondary: #D8C4A6;
-  --text-muted: #9C8A6E;
-  --text-inverse: #2F2114;
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  --text-muted: #94A3B8;
+  --text-inverse: #FFFFFF;
 
-  /* Accent & Status — كهرماني دافئ */
-  --brand-primary: #D97706;
-  --brand-hover: #B45309;
-  --brand-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #92400E 100%);
-  --brand-glow: rgba(217, 119, 6, 0.28);
-  --success: #10B981;
-  --success-bg: rgba(16, 185, 129, 0.12);
-  --success-gradient: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  /* Accent — برتقالي مطابق صور النسخة */
+  --brand-primary: #EA6A0A;
+  --brand-hover: #C25E08;
+  --brand-gradient: linear-gradient(135deg, #FDBA74 0%, #EA6A0A 50%, #B45309 100%);
+  --brand-glow: rgba(234, 106, 10, 0.22);
+  --success: #16A34A;
+  --success-bg: rgba(22, 163, 74, 0.12);
+  --success-gradient: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
   --warning: #F59E0B;
   --warning-bg: rgba(245, 158, 11, 0.12);
-  --danger: #F43F5E;
-  --danger-bg: rgba(244, 63, 94, 0.12);
-  --info: #0EA5E9;
-  --info-bg: rgba(14, 165, 233, 0.12);
+  --danger: #DC2626;
+  --danger-bg: rgba(220, 38, 38, 0.12);
+  --info: #0284C7;
+  --info-bg: rgba(2, 132, 199, 0.12);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 24px 64px -8px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 2px 0 rgba(60, 40, 20, 0.08);
+  --shadow-md: 0 4px 12px -2px rgba(60, 40, 20, 0.12);
+  --shadow-lg: 0 12px 32px -4px rgba(60, 40, 20, 0.16);
+  --shadow-xl: 0 24px 64px -8px rgba(60, 40, 20, 0.20);
   --shadow-glow: 0 0 24px var(--brand-glow);
 
   /* Geometry */
@@ -70,26 +70,55 @@
 
 /* ─── Light Theme ─────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg-canvas: #F8FAFC;
+  --bg-canvas: #FAFAFC;
   --bg-surface: #FFFFFF;
-  --bg-surface-elevated: #F1F5F9;
+  --bg-surface-elevated: #F1F4F7;
   --bg-card: #FFFFFF;
-  --bg-card-hover: #F8FAFC;
-  --bg-glass: rgba(255, 255, 255, 0.88);
+  --bg-card-hover: #F6F8FA;
+  --bg-glass: rgba(255, 255, 255, 0.9);
 
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border-medium: rgba(0, 0, 0, 0.14);
-  --border-focus: #4F46E5;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-medium: rgba(15, 23, 42, 0.14);
+  --border-focus: #EA6A0A;
 
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
   --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
+  --brand-primary: #EA6A0A;
+  --brand-hover: #C25E08;
+  --brand-gradient: linear-gradient(135deg, #FDBA74 0%, #EA6A0A 50%, #B45309 100%);
+  --brand-glow: rgba(234, 106, 10, 0.22);
+  --success: #16A34A;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+  --info: #0284C7;
+}
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+[data-theme="dark"] {
+  --bg-canvas: #1C1C21;
+  --bg-surface: #232329;
+  --bg-surface-elevated: #2E2E36;
+  --bg-card: #222228;
+  --bg-card-hover: #2E2E36;
+  --bg-glass: rgba(28, 28, 33, 0.88);
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-focus: #EA6A0A;
+
+  --text-primary: #F5F5F4;
+  --text-secondary: #D6D3D1;
+  --text-muted: #A8A29E;
+  --text-inverse: #131316;
+  --brand-primary: #F97316;
+  --brand-hover: #EA6A0A;
+  --brand-gradient: linear-gradient(135deg, #FDBA74 0%, #F97316 50%, #C2410C 100%);
+  --brand-glow: rgba(249, 115, 22, 0.28);
+  --success: #22C55E;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --info: #38BDF8;
 }
 
 [dir="ltr"] { --font: var(--font-en); }
@@ -1414,7 +1443,7 @@ body::before {
   margin: 4px 0 16px;
   border: 1px solid var(--border, #263040);
   border-radius: 14px;
-  background: var(--surface-2, #151b26);
+  background: var(--bg-surface-elevated, #151b26);
   overflow: hidden;
 }
 .top50-header {
@@ -1588,7 +1617,7 @@ body::before {
 .kpi-card .kpi-value,
 .match-score,
 .daily-rank {
-  font-family: var(--font-mono);
+  font-family: var(--font));
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
@@ -1612,7 +1641,7 @@ body::before {
 .btn-primary,
 .job-card .btn-primary,
 .daily-actions .btn-primary {
-  color: var(--on-brand);
+  color: #fff;
   font-weight: 600;
   letter-spacing: 0.01em;
   box-shadow: 0 2px 12px -2px var(--brand-glow);

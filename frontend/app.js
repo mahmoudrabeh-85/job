@@ -126,7 +126,7 @@ const LANG = {
 // ─── State ─────────────────────────────────────────────────────────────
 const state = {
   lang: localStorage.getItem('sjm-lang') || 'ar',
-  theme: localStorage.getItem('sjm-theme') || 'dark',
+  theme: localStorage.getItem('sjm-theme') || 'light',
   currentPage: 'dashboard',
   allJobs: [],
   filteredJobs: [],
