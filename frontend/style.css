@@ -3,7 +3,7 @@
    Modern 2026 UI/UX: Motion, Glassmorphism, Micro-interactions
    ═══════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 
 /* ─── Design Tokens ────────────────────────────────────────────────────── */
 :root {
@@ -66,6 +66,14 @@
   --font-en: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-ar: 'Cairo', 'Plus Jakarta Sans', system-ui, sans-serif;
   --font: var(--font-ar);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Stitch: tabular numbers for KPI/score values */
+.kpi-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 /* ─── Light Theme ─────────────────────────────────────────────────────── */
@@ -1441,7 +1449,7 @@ body::before {
 /* ─── ⭐ أفضل 50 — قسم قابل للفتح/الإغلاق في الشاشة الرئيسية (2026-10-02) ─ */
 .top50-section {
   margin: 4px 0 16px;
-  border: 1px solid var(--border, #263040);
+  border: 1px solid var(--border-medium);
   border-radius: 14px;
   background: var(--bg-surface-elevated, #151b26);
   overflow: hidden;

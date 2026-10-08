@@ -1,0 +1,5 @@
+Winner Jobs — Live Sites (verified 200 OK - 2026-10-07)
+=====================================================
+Main site (production):  https://job-hunt-blond-beta.vercel.app
+Short alias:             https://winner-jobs.vercel.app
+Source code (GitHub):    https://github.com/mahmoudrabeh-85/job

@@ -189,24 +189,24 @@
           </div>
 
           <!-- Smart Multi-CV Search Bar -->
-          <div class="smart-search-bar" role="form" aria-label="بحث ذكي متعدد السير الذاتية" style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:var(--surface-2,#151b26); border:1px solid var(--border,#263040); border-radius:14px; padding:12px 16px; margin-bottom:12px;">
+          <div class="smart-search-bar" role="form" aria-label="بحث ذكي متعدد السير الذاتية" style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:var(--bg-surface-elevated); border:1px solid var(--border-medium); border-radius:14px; padding:12px 16px; margin-bottom:12px;">
             <span style="font-weight:700; font-size:.9rem; color:var(--brand-primary,#C6A664);">🧠 بحث ذكي بسياق السيرة الذاتية</span>
             <label for="cvSelect" style="font-size:.82rem; color:var(--text-muted);">قارن بوظائف:</label>
-            <select id="cvSelect" style="flex:1; min-width:200px; background:var(--surface-1,#0d1117); color:var(--text-primary); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 10px; font-size:.85rem;">
+            <select id="cvSelect" style="flex:1; min-width:200px; background:var(--bg-surface); color:var(--text-primary); border:1px solid var(--border-medium); border-radius:8px; padding:8px 10px; font-size:.85rem;">
               <option value="default">الـ CV الأساسي (EN/AR)</option>
             </select>
             <label for="cvLimit" style="font-size:.82rem; color:var(--text-muted);">أقصى نتائج:</label>
-            <input type="number" id="cvLimit" min="1" max="500" value="50" style="width:90px; background:var(--surface-1,#0d1117); color:var(--text-primary); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 10px; font-size:.85rem;" aria-label="الحد الأقصى لعدد النتائج">
-            <select id="cvWorkType" style="background:var(--surface-1,#0d1117); color:var(--text-primary); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 10px; font-size:.85rem;" aria-label="نمط العمل">
+            <input type="number" id="cvLimit" min="1" max="500" value="50" style="width:90px; background:var(--bg-surface); color:var(--text-primary); border:1px solid var(--border-medium); border-radius:8px; padding:8px 10px; font-size:.85rem;" aria-label="الحد الأقصى لعدد النتائج">
+            <select id="cvWorkType" style="background:var(--bg-surface); color:var(--text-primary); border:1px solid var(--border-medium); border-radius:8px; padding:8px 10px; font-size:.85rem;" aria-label="نمط العمل">
               <option value="">كل أنماط العمل</option>
               <option value="remote">Remote</option>
               <option value="hybrid">Hybrid</option>
               <option value="onsite">Onsite</option>
             </select>
             <button type="button" onclick="smartSearch()" style="background:var(--brand-primary,#C6A664); color:#0d1117; border:none; border-radius:8px; padding:8px 16px; font-weight:700; cursor:pointer; font-size:.85rem;">🔍 ابحث</button>
-<button type="button" onclick="smartClear()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border,#263040); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:.82rem;">✕ إخفاء</button>
-<div id="cvWizard" style="margin:6px 0 10px;border:1px solid #334155;border-radius:10px;padding:12px;background:#0f172a;">
-  <div style="font-weight:600;margin-bottom:8px;color:#38bdf8;">🪄 اصنع سيرتك الذاتية في دقيقتين</div>
+<button type="button" onclick="smartClear()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border-medium); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:.82rem;">✕ إخفاء</button>
+<div id="cvWizard" style="margin:6px 0 10px;border:1px solid var(--border-medium);border-radius:10px;padding:12px;background:var(--bg-surface);">
+  <div style="font-weight:600;margin-bottom:8px;color:var(--info);">🪄 اصنع سيرتك الذاتية في دقيقتين</div>
   <div id="wizardQ1" style="display:block;">
     <div style="margin-bottom:8px;">هل لديك سيرة ذاتية؟</div>
     <button type="button" class="wz-btn" onclick="wizardHasCv(true)">نعم، لدي سيرة</button>
@@ -215,16 +215,16 @@
   <div id="wizardFlow" style="display:none;"></div>
 </div>
 <style>
-.wz-btn{background:#1e293b;color:#e2e8f0;border:1px solid #475569;border-radius:8px;padding:6px 14px;margin:0 6px 6px 0;cursor:pointer;font-size:13px;}
-.wz-btn:hover{background:#334155;border-color:#38bdf8;}
-.wz-q{margin:10px 0 6px;font-size:13px;color:#cbd5e1;}
-.wz-input{background:#0b1120;color:#e2e8f0;border:1px solid #475569;border-radius:8px;padding:6px 10px;width:100%;box-sizing:border-box;font-size:13px;}
+.wz-btn{background:var(--bg-surface-elevated);color:var(--text-primary);border:1px solid var(--border-medium);border-radius:8px;padding:6px 14px;margin:0 6px 6px 0;cursor:pointer;font-size:13px;}
+.wz-btn:hover{background:var(--bg-card-hover);border-color:var(--info);}
+.wz-q{margin:10px 0 6px;font-size:13px;color:var(--text-secondary);}
+.wz-input{background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-medium);border-radius:8px;padding:6px 10px;width:100%;box-sizing:border-box;font-size:13px;}
 </style>
 </div>
 
           <!-- Smart Search Results (independent grid, does not touch app.js state) -->
           <div id="smartResultsWrap" style="display:none; margin-bottom:14px;">
-            <div class="search-results-bar" style="display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--surface-2,#151b26); border:1px solid var(--border,#263040); border-radius:10px; margin-bottom:10px;">
+            <div class="search-results-bar" style="display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--bg-surface-elevated); border:1px solid var(--border-medium); border-radius:10px; margin-bottom:10px;">
               <span style="font-size:.85rem; color:var(--text-muted);">
                 عرض <strong id="smartCount" style="color:var(--brand-primary,#C6A664);">0</strong> وظيفة بسياق
                 <strong id="smartCvName" style="color:var(--text-primary);"></strong>
@@ -314,6 +314,12 @@
                 <div class="filter-chip" data-cat="mgmt" onclick="toggleCategoryChip('mgmt', this)" role="button" tabindex="0" aria-pressed="false">
                   <span>📋 إدارة وعمليات</span>
                 </div>
+                <div class="filter-chip" data-cat="finance" onclick="toggleCategoryChip('finance', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>💰 مالية ومحاسبة</span>
+                </div>
+                <div class="filter-chip" data-cat="admin" onclick="toggleCategoryChip('admin', this)" role="button" tabindex="0" aria-pressed="false">
+                  <span>🗂️ إدارية وسكرتارية</span>
+                </div>
               </div>
             </div>
 
@@ -373,6 +379,12 @@
                 </button>
                 <button type="button" class="filter-chip" onclick="searchGulf('naukri')" title="ابحث في Naukrigulf بنفس الكلمات" role="button">
                   <span>🇶🇦 Naukrigulf</span>
+                </button>
+                <button type="button" class="filter-chip" onclick="searchGulf('tanqeeb')" title="ابحث في تنقيب بنفس الكلمات" role="button">
+                  <span>🔎 تنقيب</span>
+                </button>
+                <button type="button" class="filter-chip" onclick="searchGulf('akhtaboot')" title="ابحث في أخطبوط بنفس الكلمات" role="button">
+                  <span>🐙 أخطبوط</span>
                 </button>
               </div>
             </div>
@@ -517,7 +529,7 @@
         const card = document.createElement('div');
         card.className = 'job-card';
         card.setAttribute('role', 'listitem');
-        card.style.cssText = 'background:var(--surface-1,#0d1117); border:1px solid var(--border,#263040); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;';
+        card.style.cssText = 'background:var(--bg-surface); border:1px solid var(--border-medium); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;';
         card.innerHTML =
           '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">' +
           '  <div style="min-width:0;">' +

@@ -23,7 +23,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.database_factory import fetch_all, db_exists
-from app.routers.analysis import analyze_job, CV_SKILLS, _generate_hr_template
+from app.routers.analysis import CV_SKILLS, _generate_hr_template
 from app.routers.jobs import _format_job
 from app.routers.jobs import list_applications as _list_applications
 
@@ -64,6 +64,8 @@ HR_SKILL_QUESTIONS = {
     "python": "ما مهمة متكررة أتممتها بسكريبت؟ اشرح الخطوات.",
     "operations": "كيف تحسّن عملية تشغيلية مستمرة؟ اذكر مثالاً بالأرقام.",
     "finance": "كيف تقرأ ميزانية مشتريات سنوية وتدافع عنها أمام الإدارة المالية؟",
+    "accounting": "كيف تتعامل مع فروقات الجرد أو المطابقات البنكية؟ اذكر مثالًا عمليًا.",
+    "admin": "كيف تنظم أولويات مدير مشغول وتدير جدول اجتماعات مزدحم؟",
 }
 HR_MISSING_FIX = {
     "erp": "أضف للمهارات ما تستخدمه فعلًا + الأساسيات الجاري تعلمها — ولا تدّعِ خبرة لا تملكها؛ المقابلة تكشف ما لا يكشفه ATS.",
@@ -71,6 +73,8 @@ HR_MISSING_FIX = {
     "sql": "أضف 'SQL basics — قيد التعلم' إن كان مطلوباً، وجهّز إجابة صادقة عن مستواك.",
     "power_bi": "ابنِ داشبورد مؤشرات واحدًا حقيقيًا قبل التقديم وأشر إليه في سيرتك.",
     "english": "اكتب مستواك الحقيقي وجهّز إجابات المقابلة بالإنجليزية — نقطة الفرز الأشيع.",
+    "accounting": "راجع أساسيات المحاسبة (قيود/ميزان/قوائم) وجهّز مثالًا رقميًا من عملك.",
+    "admin": "أبرز تنظيم المواعيد والمراسلات وإدارة المكاتب — مهارات تُقاس بالأمثلة لا الشهادات.",
 }
 
 
@@ -137,9 +141,39 @@ def _depth(cv_text: str, job: dict, analysis: dict) -> float:
 
 
 def _analyze_for(skills: str, job: dict) -> dict:
-    return analyze_job(skills or "",
-                       job.get("title", "") or "",
-                       (job.get("matched") or "") + " " + (job.get("category") or ""))
+    """Sanitized scoring: the REQUEST skills act as the CV (no stored profile).
+
+    matched = skill categories found in the visitor's skills;
+    missing = job-side categories absent from those skills (learning hints).
+    """
+    skill_text = (skills or "").casefold()
+    job_text = "%s %s %s" % (job.get("title", "") or "",
+                             job.get("matched", "") or "",
+                             job.get("category", "") or "")
+    job_text = job_text.casefold()
+    matched, missing, score, max_score = [], [], 0, 0
+    for cat, info in CV_SKILLS.items():
+        w = info.get("weight", 0)
+        in_skills = [k for k in info["keywords"] if k in skill_text]
+        in_job = [k for k in info["keywords"] if k in job_text]
+        if in_skills or in_job:
+            max_score += w
+        if in_skills:
+            matched.append({"category": cat, "skills": in_skills[:3], "level": "strong"})
+            score += w
+        elif in_job:
+            missing.append({"category": cat, "skills": in_job[:3],
+                            "severity": "high" if w >= 7 else "medium"})
+            score += w * 0.3
+    if any(w in job_text for w in ["10+ years", "10 years", "15+", "senior", "lead", "director"]):
+        score += 5
+        max_score += 5
+    elif any(w in job_text for w in ["5+ years", "5 years", "3+ years"]):
+        score += 3
+        max_score += 3
+    pct = min(int((score / max(max_score, 1)) * 100), 100) if max_score > 0 else 0
+    return {"score": pct, "matched": matched, "missing": missing,
+            "matched_count": len(matched), "missing_count": len(missing)}
 
 
 def _base_card(job: dict, analysis: dict, depth: float) -> dict:
@@ -348,7 +382,8 @@ def cover_letter(req: CoverIn):
     Never invents years, savings, or contacts — the user fills their own facts.
     """
     company = req.company or "your company"
-    analysis = analyze_job(req.skills or "", req.title or "", company)
+    analysis = _analyze_for(req.skills or "",
+                              {"title": req.title or "", "matched": company, "category": ""})
     tops = analysis.get("matched", [])[:3]
     sig_en = "[Your Name] | [Phone] | [Email] | [LinkedIn]"
     sig_ar = "[الاسم] | [الهاتف] | [البريد] | [لينكدإن]"

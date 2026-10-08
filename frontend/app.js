@@ -512,6 +512,8 @@ const CATEGORY_KEYWORDS = {
   sales: ['sales', 'marketing', 'business development', 'account executive', 'مبيعات', 'تسويق'],
   tech: ['dev', 'engineer', 'software', 'data', 'analyst', 'ai_ml', 'تقنية', 'بيانات', 'مبرمج'],
   mgmt: ['management', 'operations', 'project', 'إدارة', 'عمليات'],
+  finance: ['accounting', 'accountant', 'finance', 'financial', 'audit', 'bookkeeping', 'محاسب', 'محاسبة', 'مالية', 'تدقيق'],
+  admin: ['administrative', 'administrator', 'secretary', 'office manager', 'hr', 'human resources', 'assistant', 'إداري', 'سكرتير', 'سكرتارية', 'موارد بشرية', 'مساعد إداري'],
 };
 
 function toggleSourceChip(src, el) {
@@ -769,6 +771,8 @@ function searchGulf(board) {
     wuzzuf: 'https://wuzzuf.net/search/jobs/?q=' + encodeURIComponent(q),
     gulftalent: 'https://www.gulftalent.com/search?searchtext=' + encodeURIComponent(q),
     naukri: 'https://www.naukrigulf.com/search-jobs/?q=' + encodeURIComponent(q),
+    tanqeeb: 'https://www.tanqeeb.com/jobs/search?query=' + encodeURIComponent(q),
+    akhtaboot: 'https://www.akhtaboot.com/en/jobs?q=' + encodeURIComponent(q),
   };
   window.open(urls[board] || urls.bayt, '_blank', 'noopener');
   toast(state.lang === 'ar' ? 'فتحت البحث بنفس الكلمات' : 'Opened board search with same keywords');
@@ -856,6 +860,8 @@ function showWizard() {
             <option value="sales" ${state.wizardData.field === 'sales' ? 'selected' : ''}>${state.lang === 'ar' ? 'مبيعات / تطوير أعمال' : 'Sales / Business Development'}</option>
             <option value="pharma" ${state.wizardData.field === 'pharma' ? 'selected' : ''}>${state.lang === 'ar' ? 'صيدلة / طبي' : 'Pharma / Medical'}</option>
             <option value="mgmt" ${state.wizardData.field === 'mgmt' ? 'selected' : ''}>${state.lang === 'ar' ? 'إدارة / عمليات' : 'Management / Operations'}</option>
+            <option value="finance" ${state.wizardData.field === 'finance' ? 'selected' : ''}>${state.lang === 'ar' ? 'مالية / محاسبة' : 'Finance / Accounting'}</option>
+            <option value="admin" ${state.wizardData.field === 'admin' ? 'selected' : ''}>${state.lang === 'ar' ? 'إداري / موارد بشرية' : 'Admin / HR'}</option>
           </select>
         </div>
         <button class="btn btn-primary btn-lg wizard-search-btn" onclick="runWizardSearch()">
@@ -1157,6 +1163,8 @@ async function openModal(job) {
           <button class="btn btn-accent2 btn-sm" onclick="prepareApplication()">📋 جهز التقديم وافتح الصفحة</button>
           <button class="btn btn-sm" onclick="mailApplication()">✉️ إرسال بالبريد</button>
           <button class="btn btn-sm" onclick="printReport()">🖨️ طباعة التقرير</button>
+          <button class="btn btn-sm" onclick="checkPosting(this)">🔍 حالة الإعلان</button>
+          <span id="postStatus" style="font-size:.8rem"></span>
           <button class="btn btn-primary btn-sm" onclick="openApplyGuide()">🧭 ${state.lang === 'ar' ? 'مساعد التقديم خطوة بخطوة' : 'Step-by-step apply assistant'}</button>
           <button class="btn btn-sm" onclick="markApplied(state.modalJob)">✅ سجل أنك قدمت</button>
         </div>
@@ -1165,6 +1173,7 @@ async function openModal(job) {
       </div>`;
 
     loadCompanyVet(job);
+    renderPostStatus();
 
     requestAnimationFrame(() => {
       setTimeout(() => {
@@ -1649,6 +1658,50 @@ function copyAutofillBookmarklet() {
     .catch(() => toast(t().job.copyFail, 'err'));
 }
 function printReport() { window.print(); }
+
+// ─── Posting liveness (is this ad still open?) ───────────────────────
+function postStatusCache() {
+  try { return JSON.parse(localStorage.getItem('sjm-post-status') || '{}'); }
+  catch (e) { return {}; }
+}
+function renderPostStatus() {
+  const box = document.getElementById('postStatus');
+  if (!box) return;
+  const job = state.modalJob || {};
+  const key = String(job.id || job.url || '');
+  const hit = postStatusCache()[key];
+  if (hit && Date.now() - hit.ts < 86400000) {
+    box.innerHTML = hit.alive
+      ? '<span class="tag-pill" style="border-color:var(--success);color:var(--success)">🟢 مفتوح (فحص سابق)</span>'
+      : '<span class="tag-pill" style="border-color:var(--danger);color:var(--danger)">🔴 مغلق على الأرجح (فحص سابق)</span>';
+  } else {
+    box.innerHTML = '';
+  }
+}
+async function checkPosting(btn) {
+  const job = state.modalJob || {};
+  const url = job.url || '';
+  const box = document.getElementById('postStatus');
+  if (!url || !box) return;
+  if (btn) btn.disabled = true;
+  box.textContent = state.lang === 'ar' ? '⏳ يفحص...' : 'Checking...';
+  try {
+    const d = await api('/api/v1/job-status?url=' + encodeURIComponent(url));
+    const key = String(job.id || job.url || '');
+    const cache = postStatusCache();
+    cache[key] = { alive: !!d.alive, ts: Date.now() };
+    try { localStorage.setItem('sjm-post-status', JSON.stringify(cache)); } catch (e) {}
+    box.innerHTML = d.alive === true
+      ? '<span class="tag-pill" style="border-color:var(--success);color:var(--success)">🟢 الإعلان مفتوح</span>'
+      : d.alive === false
+        ? '<span class="tag-pill" style="border-color:var(--danger);color:var(--danger)">🔴 مغلق على الأرجح (' + esc(d.detail || '') + ')</span>'
+        : '<span class="tag-pill">⚪ تعذر الفحص</span>';
+  } catch (e) {
+    box.textContent = t().job.copyFail;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 
 function exportData(format) {
   const jobs = state.allJobs;
@@ -2248,11 +2301,11 @@ function openSimplifyEditor(j) {
   state.simplifyEditor.document.write(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>رسالة Simplify.jobs — ${esc(j.title || 'وظيفة')}</title>
 <style>
-  body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0b1120;color:#e2e8f0;padding:24px;max-width:620px;margin:0 auto;direction:rtl}
+  body{font-family:'Segoe UI',Tahoma,sans-serif;background:#FFFFFF;color:#1F2937;padding:24px;max-width:620px;margin:0 auto;direction:rtl}
   h3{font-size:1.1rem;margin-bottom:8px}
-  textarea{width:100%;height:260px;background:#111827;color:#e2e8f0;border:1px solid #374151;border-radius:8px;padding:10px;font:inherit;font-size:.85rem;resize:vertical;direction:rtl}
+  textarea{width:100%;height:260px;background:#FFFFFF;color:#1F2937;border:1px solid #D1D5DB;border-radius:8px;padding:10px;font:inherit;font-size:.85rem;resize:vertical;direction:rtl}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  button{flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#1e293b;color:#e2e8f0;cursor:pointer;font:inherit;font-size:.85rem}
+  button{flex:1;min-width:150px;padding:8px 12px;border-radius:8px;border:1px solid #D1D5DB;background:#F3F4F6;color:#1F2937;cursor:pointer;font:inherit;font-size:.85rem}
   button.primary{background:#c6a664;color:#0b0f14;border-color:#c6a664;font-weight:700}
   .hint{font-size:.78rem;color:#94a3b8;margin-top:8px;line-height:1.5}
 </style></head><body>

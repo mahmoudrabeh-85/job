@@ -43,6 +43,11 @@ DEPT_KEYWORDS = {
                "medical", "clinical", "gdp", "صيدلة", "أدوية", "طبي"],
     "management": ["manager", "leadership", "director", "supervision",
                    "management", "مدير", "إدارة", "قيادة"],
+    "finance": ["accounting", "accountant", "finance", "financial", "audit",
+                "bookkeeping", "محاسب", "محاسبة", "مالية", "تدقيق"],
+    "admin": ["administrative", "administrator", "secretary", "office manager",
+              "human resources", "assistant", "إداري", "سكرتارية",
+              "موارد بشرية", "مساعد إداري"],
     "operations": ["operations", "process", "quality", "compliance", "audit",
                    "analyst", "excel", "تشغيل", "عمليات", "جودة"],
 }

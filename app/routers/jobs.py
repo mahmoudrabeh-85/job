@@ -112,6 +112,8 @@ def match_jobs(req: MatchRequest):
         "sales": ["sales", "business development", "account", "مبيعات", "تطوير أعمال"],
         "pharma": ["pharma", "pharmaceutical", "medical", "healthcare", "صيدلة", "طبي", "دواء"],
         "mgmt": ["management", "operations", "manager", "إدارة", "عمليات"],
+        "finance": ["accounting", "accountant", "finance", "financial", "audit", "bookkeeping", "محاسب", "محاسبة", "مالية", "تدقيق"],
+        "admin": ["administrative", "administrator", "secretary", "office", "hr", "human resources", "assistant", "إداري", "سكرتير", "سكرتارية", "موارد بشرية", "مساعد إداري"],
     }
     terms = [term.strip().casefold() for term in req.skills.replace("،", ",").split(",") if term.strip()]
     if not terms:
@@ -436,3 +438,90 @@ def _format_job(j: dict, analysis: dict) -> dict:
         "score_db": j.get("score", 0),
         "analysis": analysis,
     }
+
+
+_POST_STATUS_CACHE: dict = {}
+_POST_STATUS_TTL = 3600
+
+_EXPIRED_MARKERS = (
+    "no longer available", "job has expired", "job expired",
+    "position has been filled", "this position is no longer",
+    "job not found", "posting has expired", "opening has been closed",
+    "this job has been closed", "posting is no longer active",
+    "annonce expire", "expiree",
+)
+
+_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+
+def _http_status(url: str, timeout: int = 12):
+    """(alive, http_code, text_head) — never raises."""
+    import time
+    import urllib.request
+    try:
+        t0 = time.time()
+        req = urllib.request.Request(url, headers=_UA)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            head = r.read(200000).decode("utf-8", errors="replace")
+            return True, r.status, head, round(time.time() - t0, 2)
+    except Exception as e:
+        code = getattr(getattr(e, "fp", None), "status", None)
+        return False, code, "", 0.0
+
+
+@router.get("/job-status")
+def job_status(url: str = ""):
+    """Is this posting still open? greenhouse/lever fast paths, generic otherwise.
+
+    Never stored server-side. Results are cheap to recompute; a short
+    in-memory cache (per instance) avoids hammering boards.
+    """
+    import re
+    import time
+    import urllib.parse
+
+    url = (url or "").strip()
+    if not url or len(url) > 2000 or not url.startswith(("http://", "https://")):
+        return {"alive": None, "detail": "invalid-url"}
+
+    now = time.time()
+    hit = _POST_STATUS_CACHE.get(url)
+    if hit and now - hit[0] < _POST_STATUS_TTL:
+        return {**hit[1], "cached": True}
+
+    host = urllib.parse.urlparse(url).netloc.lower()
+
+    # Fast path 1: Greenhouse boards API (filled jobs return 404 there).
+    m = re.search(r"(?:boards|job-boards)\.greenhouse\.io/([a-z0-9_-]+)/jobs/(\d+)", url)
+    if m:
+        ok, code, _, _ = _http_status(
+            "https://boards-api.greenhouse.io/v1/boards/%s/jobs/%s" % (m.group(1), m.group(2)))
+        res = {"alive": bool(ok and code == 200),
+               "detail": "greenhouse:%s" % (code or "unreachable")}
+        _POST_STATUS_CACHE[url] = (now, res)
+        return res
+
+    # Fast path 2: Lever postings API.
+    m = re.search(r"jobs\.lever\.co/([a-z0-9_-]+)/([a-z0-9-]+)", url)
+    if m:
+        ok, code, _, _ = _http_status(
+            "https://api.lever.co/v0/postings/%s/%s" % (m.group(1), m.group(2)))
+        res = {"alive": bool(ok and code == 200),
+               "detail": "lever:%s" % (code or "unreachable")}
+        _POST_STATUS_CACHE[url] = (now, res)
+        return res
+
+    # Generic path: reachable + no expired markers = probably open.
+    ok, code, head, secs = _http_status(url)
+    if not ok:
+        res = {"alive": False, "detail": "unreachable%s" % (":%s" % code if code else "")}
+    elif (code or 200) >= 400:
+        res = {"alive": False, "detail": "http:%s" % code}
+    else:
+        low = head.casefold()
+        marker = next((x for x in _EXPIRED_MARKERS if x in low), None)
+        res = {"alive": marker is None,
+               "detail": ("expired-marker" if marker else "open"),
+               "seconds": secs}
+    _POST_STATUS_CACHE[url] = (now, res)
+    return res
