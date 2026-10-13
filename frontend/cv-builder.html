@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>منشئ السيرة الذاتية المتوافقة مع ATS — Winner Jobs</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* Page-local layout (design tokens from style.css) */
+    .cvb-wrap { display: grid; grid-template-columns: minmax(320px, 460px) 1fr; gap: 24px; align-items: start; }
+    @media (max-width: 980px) { .cvb-wrap { grid-template-columns: 1fr; } }
+    .cvb-form { display: flex; flex-direction: column; gap: 14px; }
+    .cvb-field { display: flex; flex-direction: column; gap: 5px; }
+    .cvb-field label { font-size: .8rem; font-weight: 600; color: var(--text-secondary); }
+    .cvb-field input, .cvb-field textarea {
+      background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle);
+      border-radius: var(--r-md); color: var(--text-primary); padding: 9px 12px;
+      font-family: inherit; font-size: .88rem; transition: var(--transition);
+    }
+    .cvb-field input:focus, .cvb-field textarea:focus { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 3px var(--brand-glow); }
+    .cvb-field textarea { min-height: 74px; resize: vertical; }
+    .cvb-hint { font-size: .72rem; color: var(--text-muted); }
+    .cvb-section-title { font-size: .95rem; font-weight: 800; color: var(--brand-primary); margin: 8px 0 -4px; }
+    .cvb-dynamic { display: flex; flex-direction: column; gap: 10px; }
+    .cvb-dyn-item { background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--r-md); padding: 12px; display: grid; gap: 8px; position: relative; }
+    .cvb-dyn-item input, .cvb-dyn-item textarea { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--r-sm); color: var(--text-primary); padding: 7px 10px; font-family: inherit; font-size: .84rem; width: 100%; }
+    .cvb-remove { position: absolute; top: 8px; inset-inline-start: 8px; background: var(--danger-bg); color: var(--danger); border: none; border-radius: var(--r-sm); width: 24px; height: 24px; cursor: pointer; font-weight: 700; }
+    .cvb-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .cvb-preview-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--r-lg); padding: 18px; }
+    .cvb-frame { width: 100%; height: 640px; border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: #fff; }
+    .ats-panel { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 16px; }
+    .ats-ring { --p: 0; width: 92px; height: 92px; border-radius: 50%;
+      background: conic-gradient(var(--ring-color, var(--success)) calc(var(--p)*1%), var(--bg-surface-elevated) 0);
+      display: grid; place-items: center; }
+    .ats-ring::after { content: attr(data-score); width: 72px; height: 72px; border-radius: 50%;
+      background: var(--bg-card); display: grid; place-items: center; font-size: 1.35rem; font-weight: 800; color: var(--text-primary); }
+    .ats-meta { display: flex; flex-direction: column; gap: 6px; }
+    .ats-grade { font-weight: 800; font-size: 1.05rem; }
+    .ats-recs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .ats-rec { display: flex; gap: 8px; align-items: flex-start; padding: 9px 12px; border-radius: var(--r-md); font-size: .82rem; }
+    .ats-rec.high { background: var(--danger-bg); color: var(--text-primary); }
+    .ats-rec.medium { background: var(--warning-bg); }
+    .ats-rec.low { background: var(--info-bg); }
+    .ats-rec .sev { font-weight: 800; font-size: .68rem; padding: 2px 8px; border-radius: var(--r-full); flex-shrink: 0; }
+    .ats-rec.high .sev { background: var(--danger); color: #fff; }
+    .ats-rec.medium .sev { background: var(--warning); color: #2F2114; }
+    .ats-rec.low .sev { background: var(--info); color: #fff; }
+    .cvb-check-zone textarea { width: 100%; min-height: 160px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--r-md); color: var(--text-primary); padding: 12px; font-family: inherit; font-size: .84rem; }
+    details.cvb-check { margin-top: 18px; }
+    details.cvb-check summary { cursor: pointer; color: var(--text-secondary); font-weight: 600; font-size: .88rem; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidebar" role="navigation" aria-label="التنقل الرئيسي">
+      <div class="sidebar-brand">
+        <div class="brand-icon" aria-hidden="true">⚡</div>
+        <div class="brand-title" style="color:#C6A664;">Winner Jobs</div>
+        <div class="sidebar-glow" aria-hidden="true"></div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="/"><span class="nav-icon">🏠</span><span class="nav-label">العودة للمنصة</span></a>
+        <a class="nav-item active"><span class="nav-icon">📄</span><span class="nav-label">منشئ السيرة الذاتية</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar">WJ</div>
+          <div class="user-meta"><div class="user-name">Winner Jobs</div><div class="user-role">ATS Builder</div></div>
+        </div>
+      </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="document.getElementById('sidebarOverlay').classList.remove('open')"></div>
+
+    <main class="app-main" role="main">
+      <header class="command-bar" role="banner">
+        <div class="command-title" style="font-weight:700;font-size:1.1rem;">📄 منشئ السيرة الذاتية المتوافقة مع ATS</div>
+      </header>
+
+      <div style="padding: 24px;">
+        <p class="cvb-hint" style="margin-bottom:14px;">
+          املأ البيانات — المعاينة والدرجة تُحدَّثان فورًا. النتيجة HTML بعمود واحد وخط قياسي وبلا جداول أو صور،
+          وهو الشكل الذي تقرؤه أنظمة ATS بدون أخطاء. التنزيل عبر <strong>طباعة → حفظ كـ PDF</strong>.
+          لا يتم تخزين أي بيانات على الخادم.
+        </p>
+
+        <div class="cvb-wrap">
+          <!-- ─── Form ─────────────────────────────────────────────────── -->
+          <div class="cvb-form" id="cvbForm">
+            <div class="cvb-section-title">البيانات الأساسية</div>
+            <div class="cvb-field"><label>الاسم الكامل</label><input id="f_name" placeholder="محمود ربيع"></div>
+            <div class="cvb-field"><label>المسمى الوظيفي</label><input id="f_title" placeholder="Procurement &amp; Supply Chain Manager"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="cvb-field"><label>البريد الإلكتروني</label><input id="f_email" type="email" placeholder="you@example.com"></div>
+              <div class="cvb-field"><label>الهاتف</label><input id="f_phone" placeholder="+20 100 000 0000"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="cvb-field"><label>الموقع</label><input id="f_location" placeholder="Cairo, Egypt"></div>
+              <div class="cvb-field"><label>LinkedIn</label><input id="f_linkedin" placeholder="linkedin.com/in/username"></div>
+            </div>
+            <div class="cvb-field"><label>الملخص المهني</label><textarea id="f_summary" placeholder="Procurement leader with 15 years..."></textarea></div>
+
+            <div class="cvb-section-title">المهارات <span class="cvb-hint">(سطر لكل مهارة)</span></div>
+            <div class="cvb-field"><textarea id="f_skills" placeholder="Procurement&#10;SAP ERP&#10;Vendor Negotiation"></textarea></div>
+
+            <div class="cvb-section-title">الخبرات العملية</div>
+            <div class="cvb-dynamic" id="expList"></div>
+            <button type="button" class="btn-secondary" onclick="Cvb.addExp()">+ إضافة خبرة</button>
+
+            <div class="cvb-section-title">التعليم</div>
+            <div class="cvb-dynamic" id="eduList"></div>
+            <button type="button" class="btn-secondary" onclick="Cvb.addEdu()">+ إضافة تعليم</button>
+
+            <div class="cvb-section-title">الشهادات <span class="cvb-hint">(سطر لكل شهادة)</span></div>
+            <div class="cvb-field"><textarea id="f_certs" placeholder="PMP&#10;CIPS Level 4"></textarea></div>
+
+            <div class="cvb-section-title">اللغات <span class="cvb-hint">(سطر لكل لغة)</span></div>
+            <div class="cvb-field"><textarea id="f_langs" placeholder="Arabic — Native&#10;English — Fluent"></textarea></div>
+
+            <div class="cvb-actions">
+              <button type="button" class="btn-primary" onclick="Cvb.build()">🔄 تحديث المعاينة والدرجة</button>
+              <button type="button" class="btn-primary" onclick="Cvb.printPdf()" style="background:var(--success);">🖨️ طباعة / حفظ PDF</button>
+              <button type="button" class="btn-secondary" onclick="Cvb.downloadHtml()">⬇️ تنزيل HTML</button>
+            </div>
+
+            <details class="cvb-check">
+              <summary>🔍 فحص CV موجود (الصق نص سيرتك لتحصل على درجة ATS)</summary>
+              <div class="cvb-check-zone" style="margin-top:10px;">
+                <textarea id="f_checkText" placeholder="الصق هنا نص السيرة الذاتية الحالية..."></textarea>
+                <button type="button" class="btn-secondary" style="margin-top:8px;" onclick="Cvb.checkExisting()">فحص التوافق</button>
+              </div>
+            </details>
+          </div>
+
+          <!-- ─── Preview + ATS Panel ──────────────────────────────────── -->
+          <div>
+            <div class="cvb-preview-card">
+              <div class="ats-panel">
+                <div class="ats-ring" id="atsRing" data-score="--" style="--p:0"></div>
+                <div class="ats-meta">
+                  <div class="ats-grade" id="atsGrade">— املأ البيانات ثم اضغط تحديث</div>
+                  <div class="cvb-hint" id="atsStats"></div>
+                </div>
+              </div>
+              <div class="ats-recs" id="atsRecs"></div>
+              <iframe class="cvb-frame" id="cvFrame" title="معاينة السيرة الذاتية" sandbox="allow-same-origin"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  const Cvb = (() => {
+    let lastBuild = null;
+    const $ = (id) => document.getElementById(id);
+    const val = (id) => ($(id)?.value || "").trim();
+    const lines = (id) => val(id).split("\n").map(s => s.trim()).filter(Boolean);
+
+    const GRADES = {
+      excellent: { ar: "ممتاز — جاهز للتقديم", color: "var(--success)" },
+      good:      { ar: "جيد — تحسينات بسيطة", color: "var(--success)" },
+      fair:      { ar: "مقبول — يحتاج تحسينات", color: "var(--warning)" },
+      poor:      { ar: "ضعيف — يحتاج إعادة بناء", color: "var(--danger)" },
+    };
+
+    function collect() {
+      return {
+        full_name: val("f_name"), job_title: val("f_title"),
+        email: val("f_email"), phone: val("f_phone"),
+        location: val("f_location"), linkedin: val("f_linkedin"),
+        summary: val("f_summary"),
+        skills: lines("f_skills"),
+        experience: [...document.querySelectorAll("#expList .cvb-dyn-item")].map(el => ({
+          role: el.querySelector(".x-role").value.trim(),
+          company: el.querySelector(".x-company").value.trim(),
+          start: el.querySelector(".x-start").value.trim(),
+          end: el.querySelector(".x-end").value.trim(),
+          bullets: el.querySelector(".x-bullets").value.split("\n").map(s => s.trim()).filter(Boolean),
+        })),
+        education: [...document.querySelectorAll("#eduList .cvb-dyn-item")].map(el => ({
+          degree: el.querySelector(".e-degree").value.trim(),
+          school: el.querySelector(".e-school").value.trim(),
+          year: el.querySelector(".e-year").value.trim(),
+        })),
+        certifications: lines("f_certs"),
+        languages: lines("f_langs"),
+      };
+    }
+
+    function renderAts(ats) {
+      const ring = $("atsRing");
+      ring.style.setProperty("--p", ats.score);
+      ring.dataset.score = ats.score;
+      const g = GRADES[ats.grade] || GRADES.fair;
+      ring.style.setProperty("--ring-color", g.color);
+      $("atsGrade").textContent = g.ar;
+      $("atsGrade").style.color = g.color;
+      $("atsStats").textContent =
+        `${ats.word_count} كلمة • أقسام: ${ats.sections.length} • إنجازات مرقّمة: ${ats.quantified_achievements}`;
+      const recs = $("atsRecs");
+      recs.innerHTML = "";
+      (ats.recommendations || []).forEach(r => {
+        const d = document.createElement("div");
+        d.className = `ats-rec ${r.severity}`;
+        d.innerHTML = `<span class="sev">${r.severity === "high" ? "مهم" : r.severity === "medium" ? "متوسط" : "بسيط"}</span><span>${r.message}</span>`;
+        recs.appendChild(d);
+      });
+      if (!(ats.recommendations || []).length) {
+        recs.innerHTML = '<div class="ats-rec low"><span class="sev">✔</span><span>لا توجد ملاحظات — سيرتك متوافقة!</span></div>';
+      }
+    }
+
+    async function post(url, body) {
+      const res = await fetch(url, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function build() {
+      try {
+        const data = await post("/api/v1/cv/build", collect());
+        lastBuild = data;
+        $("cvFrame").srcdoc = data.html;
+        renderAts(data.ats);
+      } catch (e) {
+        $("atsGrade").textContent = "خطأ في الاتصال بالخادم";
+        console.error(e);
+      }
+    }
+
+    async function checkExisting() {
+      const text = val("f_checkText");
+      if (!text) return;
+      try {
+        const ats = await post("/api/v1/cv/ats-check", { cv_text: text });
+        renderAts(ats);
+        $("cvFrame").srcdoc = "<pre style='font-family:Arial;padding:20px;white-space:pre-wrap;'>" +
+          text.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c])) + "</pre>";
+      } catch (e) { console.error(e); }
+    }
+
+    function addExp(data = {}) {
+      const div = document.createElement("div");
+      div.className = "cvb-dyn-item";
+      div.innerHTML = `
+        <button type="button" class="cvb-remove" title="حذف" onclick="this.parentElement.remove()">✕</button>
+        <input class="x-role" placeholder="المسمى الوظيفي — Senior Procurement Manager" value="${data.role || ""}">
+        <input class="x-company" placeholder="الشركة — PharmaCo" value="${data.company || ""}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input class="x-start" placeholder="من — 2015" value="${data.start || ""}">
+          <input class="x-end" placeholder="إلى — Present" value="${data.end || ""}">
+        </div>
+        <textarea class="x-bullets" placeholder="إنجاز (سطر لكل نقطة)&#10;• Achieved 15% cost savings...">${data.bullets || ""}</textarea>`;
+      $("expList").appendChild(div);
+    }
+
+    function addEdu(data = {}) {
+      const div = document.createElement("div");
+      div.className = "cvb-dyn-item";
+      div.innerHTML = `
+        <button type="button" class="cvb-remove" title="حذف" onclick="this.parentElement.remove()">✕</button>
+        <input class="e-degree" placeholder="الدرجة — B.Sc. Pharmacy" value="${data.degree || ""}">
+        <input class="e-school" placeholder="الجامعة — Cairo University" value="${data.school || ""}">
+        <input class="e-year" placeholder="السنة — 2008" value="${data.year || ""}">`;
+      $("eduList").appendChild(div);
+    }
+
+    function printPdf() {
+      if (!lastBuild) { alert("اضغط «تحديث المعاينة» أولًا"); return; }
+      const w = window.open("", "_blank");
+      w.document.write(lastBuild.html);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    function downloadHtml() {
+      if (!lastBuild) { alert("اضغط «تحديث المعاينة» أولًا"); return; }
+      const blob = new Blob([lastBuild.html], { type: "text/html;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "CV_ATS.html";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    return { build, checkExisting, addExp, addEdu, printPdf, downloadHtml };
+  })();
+  </script>
+</body>
+</html>

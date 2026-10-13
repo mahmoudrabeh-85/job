@@ -15,12 +15,13 @@ router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
 # ─── CV Skills Engine (from existing job_app.py) ────────────────────────
 CV_SKILLS = {
-    "procurement": {"keywords": ["procurement", "purchasing", "sourcing", "buyer", "buying", "vendor management", "negotiation", "contract management", "rfq", "rfp", "tender", "vendor"], "weight": 10, "cv_has": True},
-    "supply_chain": {"keywords": ["supply chain", "logistics", "inventory", "warehouse", "distribution", "stock", "supplier"], "weight": 10, "cv_has": True},
-    "sales": {"keywords": ["sales", "business development", "account executive", "account manager", "revenue", "client", "customer"], "weight": 8, "cv_has": True},
-    "erp": {"keywords": ["erp", "oracle", "sap", "odoo", "netsuite", "dynamics", "salesforce"], "weight": 7, "cv_has": False},
-    "pharma": {"keywords": ["pharmaceutical", "pharma", "drug", "medicine", "healthcare", "medical", "clinical", "fda", "gdp"], "weight": 9, "cv_has": True},
-    "management": {"keywords": ["manager", "leadership", "team lead", "supervision", "management", "director"], "weight": 6, "cv_has": True},
+    # keywords: EN + AR — الاستخراج يعمل على الوصف العربي والإنجليزي معًا
+    "procurement": {"keywords": ["procurement", "purchasing", "sourcing", "buyer", "buying", "vendor management", "negotiation", "contract management", "rfq", "rfp", "tender", "vendor", "مشتريات", "شراء", "توريد", "موردين", "تفاوض", "عطاءات", "مناقصات", "إدارة العقود"], "weight": 10, "cv_has": True},
+    "supply_chain": {"keywords": ["supply chain", "logistics", "inventory", "warehouse", "distribution", "stock", "supplier", "سلاسل التوريد", "سلسلة التوريد", "لوجستيات", "مخازن", "مخزون", "توزيع", "شحن"], "weight": 10, "cv_has": True},
+    "sales": {"keywords": ["sales", "business development", "account executive", "account manager", "revenue", "client", "customer", "مبيعات", "بيع", "تطوير أعمال", "عملاء", "إيرادات"], "weight": 8, "cv_has": True},
+    "erp": {"keywords": ["erp", "oracle", "sap", "odoo", "netsuite", "dynamics", "salesforce", "أنظمة تخطيط الموارد"], "weight": 7, "cv_has": False},
+    "pharma": {"keywords": ["pharmaceutical", "pharma", "drug", "medicine", "healthcare", "medical", "clinical", "fda", "gdp", "صيدلة", "أدوية", "دواء", "شركات الأدوية", "طبي"], "weight": 9, "cv_has": True},
+    "management": {"keywords": ["manager", "leadership", "team lead", "supervision", "management", "director", "مدير", "إدارة", "قيادة", "إشراف"], "weight": 6, "cv_has": True},
     "excel": {"keywords": ["excel", "spreadsheet", "data analysis", "reporting", "dashboard"], "weight": 5, "cv_has": True},
     "operations": {"keywords": ["operations", "process improvement", "quality", "compliance", "audit"], "weight": 5, "cv_has": True},
     "python": {"keywords": ["python", "programming", "coding"], "weight": 3, "cv_has": False},
@@ -29,6 +30,8 @@ CV_SKILLS = {
     "digital_marketing": {"keywords": ["digital marketing", "seo", "sem", "social media marketing", "content marketing"], "weight": 4, "cv_has": False},
     "pmp": {"keywords": ["pmp", "project management professional", "project manager"], "weight": 4, "cv_has": False},
     "six_sigma": {"keywords": ["six sigma", "lean", "continuous improvement"], "weight": 3, "cv_has": False},
+    "finance": {"keywords": ["accounting", "accountant", "finance", "financial", "audit", "auditor", "bookkeeping", "محاسب", "محاسبة", "مالية", "تدقيق", "مراجعة مالية"], "weight": 8, "cv_has": False},
+    "admin": {"keywords": ["administrative", "administrator", "secretary", "office manager", "hr", "human resources", "assistant", "إداري", "إدارة مكاتب", "سكرتير", "سكرتارية", "موارد بشرية", "مساعد إداري"], "weight": 7, "cv_has": False},
     "crm": {"keywords": ["crm", "salesforce", "hubspot", "customer relationship"], "weight": 3, "cv_has": False},
     "agile": {"keywords": ["agile", "scrum", "kanban"], "weight": 2, "cv_has": False},
     "data_analysis": {"keywords": ["data analysis", "analytics", "business intelligence"], "weight": 4, "cv_has": False},
@@ -46,6 +49,8 @@ GAP_ADVICE = {
     "agile": {"course": "Agile/Scrum Certification", "platform": "Scrum.org / Udemy", "duration": "1-2 months", "cost": "$100-200", "priority": "low"},
     "data_analysis": {"course": "Data Analysis with Excel/Python", "platform": "Coursera / Google", "duration": "2-3 months", "cost": "Free-$100", "priority": "medium"},
     "ai_ml": {"course": "AI for Business", "platform": "Coursera / Google AI", "duration": "2-3 months", "cost": "Free-$100", "priority": "low"},
+    "finance": {"course": "Accounting Basics + Excel", "platform": "Coursera / Udemy", "duration": "2-3 months", "cost": "Free-$50", "priority": "medium"},
+    "admin": {"course": "Office Administration + HR Basics", "platform": "Coursera / LinkedIn Learning", "duration": "1-2 months", "cost": "Free-$50", "priority": "medium"},
 }
 
 
