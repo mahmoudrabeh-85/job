@@ -102,6 +102,7 @@ class CoverIn(BaseModel):
     company: str = ""
     lang: str = "en"
     skills: str = ""
+    polish: bool = False  # صقل AI اختياري (P1-5) — بلا مفتاح مهيأ يعود للقالب
 
 
 def _usd(job: dict) -> float:
@@ -398,6 +399,12 @@ def cover_letter(req: CoverIn):
                   "[أضف فقرة إنجازاتك بأرقام حقيقية من عملك هنا]\n\n"
                   "يسعدني مناقشة كيف أسهم في فريقكم. سيرتي الذاتية مرفقة للمراجعة.\n\n"
                   "مع خالص التحيات،\n%s" % (req.title, company, bullets, sig_ar))
+
+        if req.polish:
+            polished = _ai_polish(letter, "ar")
+            if polished:
+                return {"letter": polished["text"], "ai": polished["provider"]}
+        return {"letter": letter, "ai": "template"}
     else:
         if tops:
             bullets = "\n".join("• %s: %s" % (m.get("category", "").replace("_", " "),
@@ -410,7 +417,43 @@ def cover_letter(req: CoverIn):
                   "I would welcome the opportunity to discuss how I can contribute to your team. "
                   "My CV is attached for your review.\n\nSincerely,\n%s"
                   % (req.title, company, bullets, sig_en))
-    return {"letter": letter}
+        if req.polish:
+            polished = _ai_polish(letter, "en")
+            if polished:
+                return {"letter": polished["text"], "ai": polished["provider"]}
+    return {"letter": letter, "ai": "template"}
+
+
+def _ai_polish(letter: str, lang: str) -> dict | None:
+    """صقل واحد حقيقي عبر طبقة ai_provider — أي فشل يعيد None (القالب)."""
+    try:
+        from app.ai_provider import generate
+    except Exception:
+        return None
+    if lang == "ar":
+        system = ("أنت محرر خطابات تقديم. حسّن الصياغة فقط. "
+                  "ممنوع: اختراع سنوات خبرة أو أرقام أو أسماء. "
+                  "أبقِ كل ما بين [ ] كما هو حرفيا.")
+        prompt = "صقل هذا الخطاب مع إبقاء البنية والعناصر النائبة:\n\n" + letter
+    else:
+        system = ("You edit cover letters. Improve wording only. "
+                  "Forbidden: inventing years, numbers, or names. "
+                  "Keep everything inside [ ] literally unchanged.")
+        prompt = "Polish this letter, keeping its structure and placeholders:\n\n" + letter
+    try:
+        return generate(prompt, system=system)
+    except Exception:
+        return None
+
+
+@router.get("/ai-health")
+def ai_health():
+    """أي مزود AI مهيأ بمفتاح؟ (بلا اتصال شبكي — فحص إعداد فقط)."""
+    try:
+        from app.ai_provider import provider_health, provider_order
+    except Exception:
+        return {"configured": {}, "order": []}
+    return {"configured": provider_health(), "order": provider_order()}
 
 
 @router.post("/cv-pdf")

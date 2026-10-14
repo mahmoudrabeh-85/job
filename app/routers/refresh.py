@@ -21,6 +21,12 @@ import secrets
 import time
 
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import JSONResponse
+
+
+def _deny(body: dict, http_status: int) -> JSONResponse:
+    """رفض برمز HTTP حقيقي مع الحفاظ على شكل الجسم القديم (توافقية)."""
+    return JSONResponse(status_code=http_status, content=body)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -47,11 +53,11 @@ def refresh_direct(
     token: str = Query("", description="Admin refresh token (ADMIN_REFRESH_TOKEN)"),
 ):
     if not _authorized(request, token):
-        return {
+        return _deny({
             "ok": False,
             "status": 403,
             "error": "forbidden — set ADMIN_REFRESH_TOKEN env and pass ?token=",
-        }
+        }, 403)
 
     # Import lazily: heavy module, and startup must stay fast.
     import sys
@@ -70,8 +76,8 @@ def refresh_direct(
     elif source in de.FETCHERS:
         fetchers = {source: de.FETCHERS[source]}
     else:
-        return {"ok": False, "status": 400, "error": f"unknown source '{source}'",
-                "allowed": [*de.FETCHERS, "all"]}
+        return _deny({"ok": False, "status": 400, "error": f"unknown source '{source}'",
+                "allowed": [*de.FETCHERS, "all"]}, 400)
 
     raw = 0
     kept: list[dict] = []
@@ -145,7 +151,7 @@ def refresh_status(
     """Counts of direct-employer rows currently in the jobs table.
     Token accepted via ?token= or X-Admin-Token header."""
     if not _authorized(request, token):
-        return {"ok": False, "status": 403, "error": "forbidden"}
+        return _deny({"ok": False, "status": 403, "error": "forbidden"}, 403)
     from app.database_factory import fetch_all, db_exists
     if not db_exists():
         return {"ok": True, "total": 0, "sources": {}}

@@ -16,10 +16,9 @@ A local-first job search intelligence platform: aggregates jobs from free no-key
 ## Project Structure
 
 ```
-├── app/                    # Web server (Python stdlib only — no dependencies)
-│   ├── job_app.py          # Main server (port 8767)
-│   ├── index.html          # UI entry
-│   ├── main.py / database.py / config.py
+├── app/                    # Web server (FastAPI on Vercel + SQLite locally)
+│   ├── main.py             # Entry point (app/main.py)
+│   ├── database_factory.py / config.py
 │   └── routers/
 │       ├── jobs.py         # /api/v1/jobs
 │       ├── analysis.py     # /api/analyze (CV vs job)
@@ -50,7 +49,7 @@ A local-first job search intelligence platform: aggregates jobs from free no-key
 2. **Start the web dashboard**:
 
    ```
-   python app/job_app.py
+   uvicorn app.main:app --port 8767
    # → http://127.0.0.1:8767/
    ```
 

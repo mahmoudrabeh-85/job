@@ -5,15 +5,39 @@ GET /api/v1/jobs/{job_id} → single job detail
 GET /api/v1/search        → advanced search with filters
 GET /api/v1/stats         → dashboard statistics
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import JSONResponse
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.database_factory import paginate, fetch_all, fetch_one, db_exists, get_connection, execute
 from app.routers.analysis import analyze_job, load_cv_text
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
 
 APP_STATUSES = ("applied", "interview", "offer", "rejected", "withdrawn")
+
+# حد كتابة بسيط لكل IP (ذاكرة العملية — يرفع الكلفة على المسيء، P1-4).
+_APP_WRITES: dict = {}
+_APP_LIMIT_N = 30
+_APP_LIMIT_WINDOW = 60.0
+
+
+def _app_limited(request: Request):
+    """يعيد رد 429 عند تجاوز الحد، أو None عند السماح."""
+    import time
+
+    ip = (request.client.host if request.client else "?") or "?"
+    now = time.monotonic()
+    hits = [t for t in _APP_WRITES.get(ip, []) if now - t < _APP_LIMIT_WINDOW]
+    if len(hits) >= _APP_LIMIT_N:
+        return JSONResponse(
+            status_code=429,
+            content={"ok": False, "error": "too many requests — slow down"},
+            headers={"Retry-After": str(int(_APP_LIMIT_WINDOW))},
+        )
+    hits.append(now)
+    _APP_WRITES[ip] = hits
+    return None
 
 
 def _ensure_apps_table():
@@ -49,15 +73,15 @@ def _ensure_apps_table():
 
 
 class ApplyRequest(BaseModel):
-    job_id: str
-    title: str = ""
-    company: str = ""
-    url: str = ""
+    job_id: str = Field(max_length=200)
+    title: str = Field(default="", max_length=500)
+    company: str = Field(default="", max_length=500)
+    url: str = Field(default="", max_length=1000)
 
 
 class ApplyStatusRequest(BaseModel):
     status: str = "applied"
-    notes: str = ""
+    notes: str = Field(default="", max_length=2000)
 
 
 class MatchRequest(BaseModel):
@@ -340,8 +364,11 @@ def _upsert_sql() -> str:
 
 
 @router.post("/applications")
-def mark_applied(req: ApplyRequest):
+def mark_applied(req: ApplyRequest, request: Request):
     """Record that the user applied to a job (tracker)."""
+    limited = _app_limited(request)
+    if limited is not None:
+        return limited
     _ensure_apps_table()
     ph = _placeholder()
     with get_connection() as conn:
@@ -365,8 +392,11 @@ def list_applications():
 
 
 @router.patch("/applications/{job_id}")
-def update_application(job_id: str, req: ApplyStatusRequest):
+def update_application(job_id: str, req: ApplyStatusRequest, request: Request):
     """Update status/notes of a tracked application."""
+    limited = _app_limited(request)
+    if limited is not None:
+        return limited
     _ensure_apps_table()
     if req.status not in APP_STATUSES:
         return {"ok": False, "error": f"status must be one of {APP_STATUSES}"}
