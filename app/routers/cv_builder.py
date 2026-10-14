@@ -2,6 +2,7 @@
 routers/cv_builder.py — ATS-compliant CV Builder (Pillar 4)
 POST /api/v1/cv/build       → build ATS-safe CV HTML + plain text
 POST /api/v1/cv/ats-check   → ATS-compatibility score (0-100) + recommendations
+POST /api/v1/cv/extract     → extract skills/categories/years from raw CV text
 
 ATS-safe means: single column, standard section headings, no tables/columns/
 images/icons, standard fonts, parseable dates, keywords repeated in context.
@@ -278,3 +279,54 @@ def build_cv(cv: CVData):
 def ats_check(req: ATSCheckRequest):
     """Score raw CV text for ATS parseability. Nothing is stored."""
     return ats_check_text(req.cv_text)
+
+
+class ExtractRequest(BaseModel):
+    cv_text: str = Field(default="", max_length=30000)
+
+
+def _estimate_years(text: str) -> int | None:
+    """أقصى تقدير لسنوات الخبرة: رقم صريح (N years) أو مدى التواريخ."""
+    m = re.findall(r"(\d{1,2})\s*(?:\+?\s*)?(?:years?|yrs?|سنوات?|سنة)", text, re.I)
+    if m:
+        return max(0, min(40, max(int(x) for x in m)))
+    dates = [int(y) for y in re.findall(r"\b(19|20)\d{2}\b", text)]
+    if len(dates) >= 2:
+        return max(0, min(40, max(dates) - min(dates)))
+    return None
+
+
+@router.post("/extract")
+def extract_cv(req: ExtractRequest):
+    """استخراج المهارات والفئات والسنوات من نص CV — بلا أي تخزين.
+
+    يُستخدم في استطلاع البداية: الزائر يلصق سيرته فنملأ له البحث تلقائيا.
+    """
+    from app.routers.analysis import CV_SKILLS
+
+    text = (req.cv_text or "")[:30000]
+    low = text.casefold()
+    cats = []
+    for cat, info in CV_SKILLS.items():
+        hits = []
+        for k in info.get("keywords", []):
+            if not k:
+                continue
+            kl = k.casefold()
+            # الكلمات القصيرة (ai/ml/hr...) تطابق جزئيا داخل أي كلمة —
+            # نشترط حدود كلمات لها حتى لا تلوث النتيجة.
+            if len(kl) <= 3:
+                if re.search(r"\b" + re.escape(kl) + r"\b", low):
+                    hits.append(k)
+            elif kl in low:
+                hits.append(k)
+        if hits:
+            cats.append({"category": cat, "skills": hits[:8]})
+    cats.sort(key=lambda c: -len(c["skills"]))
+    skills_text = ", ".join(k for c in cats[:6] for k in c["skills"][:4])
+    return {
+        "skills_text": skills_text,
+        "categories": cats[:10],
+        "years_estimate": _estimate_years(text),
+        "ats": ats_check_text(text),
+    }

@@ -206,7 +206,7 @@
             <button type="button" onclick="smartSearch()" style="background:var(--brand-primary,#C6A664); color:#0d1117; border:none; border-radius:8px; padding:8px 16px; font-weight:700; cursor:pointer; font-size:.85rem;">🔍 ابحث</button>
 <button type="button" onclick="smartClear()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border-medium); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:.82rem;">✕ إخفاء</button>
 <div id="cvWizard" style="margin:6px 0 10px;border:1px solid var(--border-medium);border-radius:10px;padding:12px;background:var(--bg-surface);">
-  <div style="font-weight:600;margin-bottom:8px;color:var(--info);">🪄 اصنع سيرتك الذاتية في دقيقتين</div>
+  <div style="font-weight:600;margin-bottom:8px;color:var(--info);">🪄 دليلك في دقيقتين: سيرتك ← وظائفك المطابقة</div>
   <div id="wizardQ1" style="display:block;">
     <div style="margin-bottom:8px;">هل لديك سيرة ذاتية؟</div>
     <button type="button" class="wz-btn" onclick="wizardHasCv(true)">نعم، لدي سيرة</button>
@@ -598,109 +598,276 @@
       grid.innerHTML = '';
     };
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadCvOptions);
-    else loadCvOptions();
+    function initSmart() { loadCvOptions(); survWelcomeBack(); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSmart);
+    else initSmart();
 
-    // ── CV Wizard (one question at a time) ──
-    let wizField = '';
-    let wizTitle = '';
+    // ── Guided Survey (استطلاع موجه: سي في ← استخراج، أو أسئلة ← بناء سي في) ──
+    // الخصوصية: نص السيرة يُحلل لحظيا عبر /cv/extract ولا يُخزن على الخادم أبدا.
+    let survField = '';
+    let survTitle = '';
+    let survYears = null;
+    let survWork = 'all';
+    let survSkills = '';
+    let survCvData = null;
+
+    function survProfile() {
+      return { field: survField, title: survTitle, years: survYears, work: survWork, skills: survSkills };
+    }
+    function survSave(profile) {
+      try { localStorage.setItem('sjm-profile', JSON.stringify(profile)); } catch (e) {}
+    }
+    function survLoad() {
+      try { return JSON.parse(localStorage.getItem('sjm-profile') || 'null'); } catch (e) { return null; }
+    }
 
     window.wizardHasCv = function (hasCv) {
       const q1 = document.getElementById('wizardQ1');
       const flow = document.getElementById('wizardFlow');
-      if (hasCv) {
-        q1.style.display = 'none';
-        flow.style.display = 'block';
-        flow.innerHTML = '<div class="wz-q">رائع! اختر سيرتك من القائمة أعلاه أو جرّب شخصية جاهزة👇</div>';
-      } else {
-        q1.style.display = 'none';
-        flow.style.display = 'block';
-        wizStep(1);
+      q1.style.display = 'none';
+      flow.style.display = 'block';
+      survField = ''; survTitle = ''; survYears = null; survWork = 'all'; survSkills = ''; survCvData = null;
+      if (hasCv) survCvStep();
+      else survQField();
+    };
+
+    window.survRestart = function () {
+      document.getElementById('wizardFlow').style.display = 'none';
+      const q1 = document.getElementById('wizardQ1');
+      q1.style.display = 'block';
+      survWelcomeBack();
+    };
+
+    window.survProfile = function () { return survProfile(); };
+    window.survWelcomeBack = function () { survWelcomeBack(); };
+    function survWelcomeBack() {
+      const p = survLoad();
+      const q1 = document.getElementById('wizardQ1');
+      if (!p || !q1 || document.getElementById('survWelcome')) return;
+      const d = document.createElement('div');
+      d.id = 'survWelcome';
+      d.style.cssText = 'margin-top:8px;font-size:13px;color:var(--text-secondary);';
+      d.innerHTML = '👋 لديك بروفايل محفوظ (' + escapeHtml(p.title || p.field || 'بروفايل') + ') — ' +
+        '<button type="button" class="wz-btn" onclick="survQuickSearch()">عرض وظائفي مباشرة</button> ' +
+        '<button type="button" class="wz-btn" onclick="document.getElementById(\'survWelcome\').remove()">إعادة الاستطلاع</button>';
+      q1.appendChild(d);
+    }
+
+    window.survQuickSearch = function () {
+      const p = survLoad();
+      if (!p) return;
+      document.getElementById('wizardQ1').style.display = 'none';
+      document.getElementById('wizardFlow').style.display = 'block';
+      survSearch(p, 'بروفايلك المحفوظ');
+    };
+
+    // ── فرع السيرة الموجودة: لصق/رفع ← استخراج ← وظائف ──
+    window.survCvStep = function () {
+      const flow = document.getElementById('wizardFlow');
+      flow.innerHTML =
+        '<div class="wz-q">📄 الصق نص سيرتك الذاتية (أو ارفع ملف .txt) — تُحلل لحظيا ولا تُخزن:</div>' +
+        '<textarea id="survCvText" class="wz-input" rows="6" placeholder="الصق نص السيرة هنا..."></textarea>' +
+        '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+        '<input type="file" id="survCvFile" accept=".txt,.text" style="font-size:12px;" onchange="survReadFile(this)">' +
+        '<button type="button" class="wz-btn" onclick="survExtract()">استخرج مهاراتي ←</button>' +
+        '<button type="button" class="wz-btn" onclick="survRestart()">رجوع</button>' +
+        '</div><div id="survCvMsg" class="wz-q"></div>';
+    };
+
+    window.survReadFile = function (input) {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = function () { document.getElementById('survCvText').value = String(rd.result || '').slice(0, 30000); };
+      rd.readAsText(f);
+    };
+
+    window.survExtract = async function () {
+      const txt = (document.getElementById('survCvText').value || '').trim();
+      const msg = document.getElementById('survCvMsg');
+      if (txt.length < 40) { msg.innerHTML = '<span style="color:#ef4444;">الصق نصا أطول (40 حرفا على الأقل) حتى نستخرج مهاراتك.</span>'; return; }
+      msg.textContent = '⏳ نحلل سيرتك...';
+      try {
+        const res = await fetch('/api/v1/cv/extract', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cv_text: txt.slice(0, 30000) })
+        });
+        const data = await res.json();
+        if (!data.skills_text) { msg.innerHTML = '<span style="color:#ef4444;">لم نجد مهارات معروفة — جرّب نصا أطول أو أجب عن الأسئلة.</span>'; return; }
+        survCvData = data;
+        survCvResult();
+      } catch (e) {
+        msg.innerHTML = '<span style="color:#ef4444;">خطأ في التحليل: ' + escapeHtml(String(e.message || e)) + '</span>';
       }
     };
 
-    window.wizStep = function (step) {
+    window.survCvResult = function () {
+      const d = survCvData;
       const flow = document.getElementById('wizardFlow');
-      const args = Array.prototype.slice.call(arguments, 1);
-      const field = args[0] || wizField;
-      const years = args[1] || '';
+      const chips = (d.categories || []).slice(0, 6).map(c =>
+        '<span class="wz-btn" style="cursor:default;">' + escapeHtml(c.category.replace(/_/g, ' ')) + ' (' + c.skills.length + ')</span>').join('');
+      const ats = d.ats || {};
+      flow.innerHTML =
+        '<div class="wz-q">✅ وجدناك! درجة سيرتك في أنظمة الفرز: <strong>' + (ats.score != null ? ats.score : '—') + '/100</strong></div>' +
+        '<div class="wz-q">المهارات المستخرجة: ' + escapeHtml(d.skills_text.split(',').slice(0, 8).join('، ')) + '</div>' +
+        '<div style="margin:6px 0;">' + chips + '</div>' +
+        '<div class="wz-q">سنوات الخبرة التقديرية: ' + (d.years_estimate != null ? d.years_estimate : 'غير محددة') + '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button type="button" class="wz-btn" onclick="survCvJobs()">🔍 اعرض وظائفي المطابقة</button>' +
+        '<button type="button" class="wz-btn" onclick="survCvStep()">تعديل النص</button>' +
+        '</div>';
+    };
 
-      if (step === 1) {
-        flow.innerHTML =
-          '<div class="wz-q">ما أقرب مجال لخبرتك؟</div>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(2,\'procurement\')">المشتريات</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(2,\'sales\')">المبيعات</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(2,\'supply_chain\')">سلسلة التوريد واللوجستيات</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(2,\'pharma\')">الصيدلة والقطاع الطبي</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(2,\'general\')">إدارة وأعمال عامة</button>';
-      } else if (step === 2) {
-        wizField = field;
-        flow.innerHTML =
-          '<div class="wz-q">ما مسماك الوظيفي الحالي أو الأخير؟</div>' +
-          '<input type="text" id="wizTitle" class="wz-input" placeholder="مثال: Senior Procurement Manager">' +
-          '<br><button type="button" class="wz-btn" onclick="wizStep(3,\'\')">التالي →</button>';
-      } else if (step === 3) {
-        const titleEl = document.getElementById('wizTitle');
-        if (titleEl) wizTitle = titleEl.value.trim();
-        wizField = field;
-        flow.innerHTML =
-          '<div class="wz-q">كم سنة خبرة؟</div>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'0-2\')">أقل من سنتين (0-2)</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'3-5\')">3-5 سنوات</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'6-10\')">6-10 سنوات</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(4,\'' + wizField + '\',\'10+\')">أكثر من 10</button>';
-      } else if (step === 4) {
-        wizField = field;
-        flow.innerHTML =
-          '<div class="wz-q">ما نمط العمل المفضل؟</div>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'remote\')">🌐 Remote (عن بُعد)</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'hybrid\')">Hybrid (هجين)</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'onsite\')">🏢 Onsite (مقر العمل)</button>' +
-          '<button type="button" class="wz-btn" onclick="wizStep(5,\'' + wizField + '\',\'' + years + '\',\'all\')">كل الأنماط</button>';
-      } else if (step === 5) {
-        const workType = args[2] || 'all';
-        wizCreate(wizField, years, workType);
+    window.survCvJobs = function () {
+      const d = survCvData;
+      if (!d) return;
+      const topCat = (d.categories && d.categories[0] && d.categories[0].category) || '';
+      const profile = { skills: d.skills_text, years: d.years_estimate, field: topCat, work: 'all', title: '' };
+      survSave(profile);
+      survSearch(profile, 'سيرتك');
+    };
+
+    // ── فرع الأسئلة: مجال ← مسمى ← سنوات ← نمط ← مهارات ← ملخص + بناء سي في ──
+    window.survQField = function () { survQ('field'); };
+    window.survStep = window.survQField;
+
+    window.survQ = function (step, v) {
+      const flow = document.getElementById('wizardFlow');
+      if (step === 'field') {
+        const fields = [['procurement', 'المشتريات'], ['sales', 'المبيعات'], ['supply_chain', 'سلسلة التوريد واللوجستيات'],
+          ['pharma', 'الصيدلة والقطاع الطبي'], ['finance', 'المالية والمحاسبة'], ['admin', 'إداري وموارد بشرية'], ['mgmt', 'إدارة وعمليات']];
+        flow.innerHTML = '<div class="wz-q">ما أقرب مجال لخبرتك؟ (1/5)</div>' +
+          fields.map(f => '<button type="button" class="wz-btn" onclick="survSetField(\'' + f[0] + '\')">' + f[1] + '</button>').join('') +
+          '<div><button type="button" class="wz-btn" onclick="survRestart()">رجوع</button></div>';
+      } else if (step === 'title') {
+        flow.innerHTML = '<div class="wz-q">ما مسماك الوظيفي الحالي أو الأخير؟ (2/5)</div>' +
+          '<input type="text" id="survTitle" class="wz-input" placeholder="مثال: Senior Procurement Manager" value="' + escapeAttr(survTitle) + '">' +
+          '<br><button type="button" class="wz-btn" onclick="survSetTitle()">التالي ←</button> ' +
+          '<button type="button" class="wz-btn" onclick="survQ(\'field\')">رجوع</button>';
+      } else if (step === 'years') {
+        flow.innerHTML = '<div class="wz-q">كم سنة خبرة؟ (3/5)</div>' +
+          '<button type="button" class="wz-btn" onclick="survSetYears(0)">أول وظيفة لي</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetYears(1)">0-2 سنوات</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetYears(4)">3-5 سنوات</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetYears(8)">6-10 سنوات</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetYears(12)">أكثر من 10</button>' +
+          '<div><button type="button" class="wz-btn" onclick="survQ(\'title\')">رجوع</button></div>';
+      } else if (step === 'work') {
+        flow.innerHTML = '<div class="wz-q">ما نمط العمل المفضل؟ (4/5)</div>' +
+          '<button type="button" class="wz-btn" onclick="survSetWork(\'remote\')">🌐 عن بُعد</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetWork(\'hybrid\')">هجين</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetWork(\'onsite\')">🏢 مقر العمل</button>' +
+          '<button type="button" class="wz-btn" onclick="survSetWork(\'all\')">كل الأنماط</button>' +
+          '<div><button type="button" class="wz-btn" onclick="survQ(\'years\')">رجوع</button></div>';
+      } else if (step === 'skills') {
+        flow.innerHTML = '<div class="wz-q">اكتب أهم مهاراتك (افصل بفاصلة) — اقترحنا لك بداية حسب مجالك (5/5):</div>' +
+          '<input type="text" id="survSkills" class="wz-input" value="' + escapeAttr(survSkills || survDefaultSkills()) + '">' +
+          '<br><button type="button" class="wz-btn" onclick="survFinish()">عرض الملخص ←</button> ' +
+          '<button type="button" class="wz-btn" onclick="survQ(\'work\')">رجوع</button>';
       }
+    };
+
+    window.survDefaultSkills = function () { return survDefaultSkills(); };
+    function survDefaultSkills() {
+      const map = {
+        procurement: 'مشتريات، تفاوض، إدارة موردين، سلاسل توريد',
+        sales: 'مبيعات، تطوير أعمال، إدارة عملاء',
+        supply_chain: 'لوجستيات، مخازن، توزيع',
+        pharma: 'صيدلة، رعاية صحية، التزام',
+        finance: 'محاسبة، مالية، تدقيق',
+        admin: 'إدارة مكاتب، موارد بشرية',
+        mgmt: 'إدارة، عمليات، تقارير'
+      };
+      return map[survField] || 'إدارة، تواصل، تقارير';
     }
 
-    window.wizCreate = async function (field, years, workType) {
-      const title = wizTitle || '';
-      if (!title) {
-        const flow = document.getElementById('wizardFlow');
-        flow.innerHTML += '<div style="color:#ef4444;margin-top:8px;font-size:13px;">اكتب اسم المسمى الوظيفي أولاً</div>';
-        return;
-      }
-
-      const skillsMap = {
-        procurement: ['procurement','negotiation','vendor management','supply chain'],
-        sales: ['sales','business development','client management'],
-        supply_chain: ['logistics','inventory management','distribution'],
-        pharma: ['pharmaceutical','healthcare','compliance'],
-        general: ['management','operations','reporting']
-      };
-      const skills = skillsMap[field] || skillsMap['general'];
-
+    window.survSetField = function (f) { survField = f; survSkills = survDefaultSkills(); survQ('title'); };
+    window.survSetTitle = function () {
+      survTitle = (document.getElementById('survTitle').value || '').trim();
+      if (!survTitle) { survQ('title'); return; }
+      survQ('years');
+    };
+    window.survSetYears = function (y) { survYears = y; survQ('work'); };
+    window.survSetWork = function (w) { survWork = w; survQ('skills'); };
+    window.survFinish = function () {
+      survSkills = (document.getElementById('survSkills').value || '').trim() || survDefaultSkills();
+      const p = survProfile();
+      survSave(p);
       const flow = document.getElementById('wizardFlow');
-      flow.innerHTML = '<div class="wz-q">⏳ جاري إنشاء سيرتك وتحميل النتائج...</div>';
+      flow.innerHTML =
+        '<div class="wz-q">📋 بروفايلك: <strong>' + escapeHtml(p.title || '—') + '</strong> · ' +
+        escapeHtml(p.field.replace(/_/g, ' ')) + ' · ' + (p.years || 0) + ' سنوات · ' +
+        escapeHtml({ remote: 'عن بُعد', hybrid: 'هجين', onsite: 'مقر العمل', all: 'كل الأنماط' }[p.work] || '') + '</div>' +
+        '<div class="wz-q">المهارات: ' + escapeHtml(p.skills) + '</div>' +
+        '<div id="survBuildMsg" class="wz-q"></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button type="button" class="wz-btn" onclick="survSearch(survProfile(),\'بروفايلك\')">🔍 اعرض وظائفي</button>' +
+        '<button type="button" class="wz-btn" onclick="survBuildCv()">⬇ ابنِ لي سي في وحمّله</button>' +
+        '<button type="button" class="wz-btn" onclick="survQ(\'skills\')">تعديل</button>' +
+        '</div>';
+    };
 
+    window.survBuildCv = async function () {
+      const p = survProfile();
+      const msg = document.getElementById('survBuildMsg');
+      msg.textContent = '⏳ نبني سيرتك...';
+      const payload = {
+        full_name: '[Your Name]', job_title: p.title || p.field, email: '[Email]', phone: '[Phone]',
+        location: '', linkedin: '', summary: p.skills,
+        skills: p.skills.split(/[,،]/).map(s => s.trim()).filter(Boolean).slice(0, 12),
+        experience: [{ role: p.title || p.field, company: '[Company]', start: '', end: 'Present',
+          bullets: ['Relevant experience: ' + p.skills.slice(0, 120)] }],
+        education: [], certifications: [], languages: []
+      };
       try {
-        const res = await fetch('/api/cv_generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, years, field, skills, work_type: workType })
+        const res = await fetch('/api/v1/cv/build', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) {
-          await loadCvOptions();
-          const newCv = cvSelect.querySelector('option[value="' + data.cv_id + '"]');
-          if (newCv) cvSelect.value = data.cv_id;
-          smartSearch();
-          flow.innerHTML = '<div class="wz-q" style="color:#22c55e;">✅ تم إنشاء سيرتك (الاسم: ' + data.cv_id + ') — النتائج بالأعلى. يمكنك إعادة الاختيار من القائمة أو إنشاء غيرها.</div>';
-        } else {
-          flow.innerHTML = '<div class="wz-q" style="color:#ef4444;">فشل الإنشاء: ' + (data.message || 'unknown') + '</div>';
-        }
+        if (!data.plain_text) throw new Error('no text');
+        const blob = new Blob([data.plain_text], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'my-cv.txt';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        msg.innerHTML = '✅ حُمّلت سيرتك! درجة توافقها مع أنظمة الفرز: <strong>' +
+          ((data.ats && data.ats.score != null) ? data.ats.score + '/100' : '—') + '</strong> (املأ بياناتك مكان الأقواس).';
       } catch (e) {
-        flow.innerHTML = '<div class="wz-q" style="color:#ef4444;">خطأ في الإنشاء: ' + escapeHtml(String(e.message || e)) + '</div>';
+        msg.innerHTML = '<span style="color:#ef4444;">تعذر البناء الآلي — انسخ ملخصك أعلاه في ملف نصي.</span>';
+      }
+    };
+
+    // ── البحث ببروفايل الاستطلاع عبر /match + فلتر نمط العمل (مرآة app.js) ──
+    window.survSearch = async function (profile, label) {
+      const flow = document.getElementById('wizardFlow');
+      flow.innerHTML = '<div class="wz-q">⏳ نطابق بروفايلك مع ' + (window.SURV_TOTAL || 'آلاف') + ' وظيفة...</div>';
+      try {
+        const res = await fetch('/api/v1/match', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skills: profile.skills || '', years: profile.years, field: profile.field || '' })
+        });
+        const data = await res.json();
+        let list = data.items || data.jobs || data.results || [];
+        const wt = profile.work || 'all';
+        if (wt && wt !== 'all') {
+          list = list.filter(j => {
+            const combined = ((j.location || '') + ' ' + (j.title || '')).toLowerCase();
+            if (wt === 'remote') return combined.includes('remote') || combined.includes('عن بعد');
+            if (wt === 'hybrid') return combined.includes('hybrid') || combined.includes('هجين');
+            if (wt === 'onsite') return !combined.includes('remote') && !combined.includes('عن بعد');
+            return true;
+          });
+        }
+        survSave(profile);
+        renderJobs(list.slice(0, parseInt((document.getElementById('cvLimit') || {}).value, 10) || 50), label || 'بروفايلك', list.length);
+        wrap.style.display = 'block';
+        flow.innerHTML = '<div class="wz-q" style="color:#22c55e;">✅ وجدنا لك <strong>' + list.length + '</strong> وظيفة مطابقة — النتائج بالأعلى. ' +
+          '<button type="button" class="wz-btn" onclick="survRestart()">تعديل بروفايلي</button></div>';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) {
+        flow.innerHTML = '<div class="wz-q" style="color:#ef4444;">فشل البحث: ' + escapeHtml(String(e.message || e)) + '</div>';
       }
     };
 
